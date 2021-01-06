@@ -1,0 +1,10 @@
+反射、泛型、注解、List 等集合源码、并发、JVM 相关
+四大组件、View、Binder、Handler、SP、Activity 启动、插件化
+包体积、布局、内存优化
+Task、打包流程、自定义 Plugin、编译优化等
+网络、设计模式、算法
+
+AAPT2 和 AAPT 和 有什么区别
+V1 V2签名
+为什么要分 Dex
+多 dex 怎么加载
