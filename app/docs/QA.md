@@ -120,21 +120,37 @@ SystemServer 的run方法里主要做的事情有：
 
 
 ###### 2、ActivityManagerService启动
-ActivityManagerService通常称AMS，主要管理应用进程的生命周期以及四大组件等。AMS是在初始化system_server进程时启动的： 
+ActivityManagerService通常称AMS，主要管理应用进程的生命周期以及四大组件等。AMS是在初始化system_server进程时启动的。AMS在服务
+启动涉及到的操作主要有:
 在[SystemServer]startBootstrapServices():  
 ```
  mActivityManagerService = mSystemServiceManager.startService(
  ActivityManagerService.Lifecycle.class).getService(); 1、启动ActivityManagerService
  mActivityManagerService.setSystemServiceManager(mSystemServiceManager); 2、设置SystemServiceManager,归入自己管理
- mActivityManagerService.setInstaller(installer); 3、
+ mActivityManagerService.setInstaller(installer); 3、设置Installer
  ...
-  mActivityManagerService.initPowerManagement();
+  mActivityManagerService.initPowerManagement(); 4、初始化电源管理
  ...
  mActivityManagerService.setSystemProcess(); 
-
- 
 ```
-ActivityManagerService的start方法。
+
+[SystemServer]startCoreServices():
+```
+ mActivityManagerService.setUsageStatsManager(LocalServices.getService(UsageStatsManagerInternal.class));
+```
+
+[SystemServer]startOtherServices():
+```
+ mActivityManagerService.installSystemProviders();
+ ...
+ mActivityManagerService.setWindowManager(wm);
+ ...
+ mActivityManagerService.systemReady(() -> {。。。}
+ ...
+ mActivityManagerService.startObservingNativeCrashes()
+```
+
+先从ActivityManagerService启动开始。服务启动必会执行到的start()方法.AMS实际执行的start()：
 ```
 private void start() {
   removeAllProcessGroups(); //移除所有进程组
@@ -156,7 +172,14 @@ private void start() {
   }
 }
 ```
-#setSystemServiceManager()与#setInstaller()都仅是为AMS自己的对象赋值。看setSystemProcess()：  
+
+#setSystemServiceManager()与#setInstaller()都仅是为AMS自己内部对象赋值。看setSystemProcess()。  
+[ActivityManagerService]setSystemProcess()  
+1、将AMS注册到 ServiceManager。  
+2、其他服务注册到 ServiceManager，如activity、procstats、meminfo、gfxinfo、dbinfo、cpuinfo、permission、processinfo。  
+3、创建ProcessRecord对象维护当前进程的相关信息。  
+
+
 
 
 
