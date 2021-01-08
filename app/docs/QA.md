@@ -121,7 +121,7 @@ SystemServer 的run方法里主要做的事情有：
 
 ###### 2、ActivityManagerService启动
 ActivityManagerService通常称AMS，主要管理应用进程的生命周期以及四大组件等。AMS是在初始化system_server进程时启动的。AMS在服务
-启动涉及到的操作主要有:
+启动后都干了些什么:
 在[SystemServer]startBootstrapServices():  
 ```
  mActivityManagerService = mSystemServiceManager.startService(
@@ -133,7 +133,6 @@ ActivityManagerService通常称AMS，主要管理应用进程的生命周期以�
  ...
  mActivityManagerService.setSystemProcess(); 
 ```
-
 [SystemServer]startCoreServices():
 ```
  mActivityManagerService.setUsageStatsManager(LocalServices.getService(UsageStatsManagerInternal.class));
@@ -141,16 +140,15 @@ ActivityManagerService通常称AMS，主要管理应用进程的生命周期以�
 
 [SystemServer]startOtherServices():
 ```
- mActivityManagerService.installSystemProviders();
+ mActivityManagerService.installSystemProviders(); //安装系统Provider
  ...
- mActivityManagerService.setWindowManager(wm);
+ mActivityManagerService.setWindowManager(wm); //设置wm
  ...
  mActivityManagerService.systemReady(() -> {。。。}
  ...
- mActivityManagerService.startObservingNativeCrashes()
+ mActivityManagerService.startObservingNativeCrashes() // 启动native异常监听器
 ```
-
-先从ActivityManagerService启动开始。服务启动必会执行到的start()方法.AMS实际执行的start()：
+先从ActivityManagerService启动开始。服务启动必会执行到的start()方法。AMS实际执行的start()：
 ```
 private void start() {
   removeAllProcessGroups(); //移除所有进程组
@@ -174,10 +172,24 @@ private void start() {
 ```
 
 #setSystemServiceManager()与#setInstaller()都仅是为AMS自己内部对象赋值。看setSystemProcess()。  
-[ActivityManagerService]setSystemProcess()  
-1、将AMS注册到 ServiceManager。  
+[ActivityManagerService]setSystemProcess()这个方法主要有  
+1、将AMS注册到 ServiceManager。方便统一管理  
 2、其他服务注册到 ServiceManager，如activity、procstats、meminfo、gfxinfo、dbinfo、cpuinfo、permission、processinfo。  
-3、创建ProcessRecord对象维护当前进程的相关信息。  
+3、创建ProcessRecord对象维护当前进程的相关信息。   
+[ActivityManagerService]systemReady(..)，主要是完成AMS的最后收尾工作   
+1、调起一些关键服务(如AppOpsService)SystemReady()相关的函数，杀死一些常驻进程(没有FLAG_PERSISTENT标志)  
+2、执行goingCallback.run()里面的逻辑。  
+>监听native的crash情况：startObservingNativeCrashes();  
+准备WeView的：mWebViewUpdateService.prepareWebViewInSystemServer();  
+启动系统UI：startSystemUi(context, windowManagerF);  
+调用一系列服务的systemRunning()方法;
+
+3、为系统启动HomeActivity，发送广播等完成后续工作，启动Launcher。AMS启动结束 
+
+到此，AMS的启动，准备工作完成同时启动服务，发送广播完成后续工作。
+
+
+###### 3、Launcher
 
 
 
