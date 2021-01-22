@@ -32,10 +32,12 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 
 ##### Activity的启动流程 (API 28)
 启动流程涉及到以下多个点
-* android 中的消息机制
-* binder通信
-* zygote进程与system_server进程的启动
+* android 中的消息机制(另开篇幅)
 * 同步屏障(消息机制)
+* binder通信(另开篇幅)
+* zygote进程
+* system_server进程
+* Launcher
 
 > fork() 机制   
 父进程通过 fork() 可以孵化出一个子进程。相当于是一个进程变成了两个进程。同时具有以下特点：  
@@ -66,7 +68,7 @@ platform/system/core/rootdir/init.rc，从而fork出zygote进程。
 
 进入到ZygoteInit的main方法后，进程由c层(native层)进入到了java层。在ZygoteInit.java的main方法中主要完成的工作有：  
 >1、调用preload()预加载类和资源  
-2、通过ZygoteServer()创建服务端的Socket对象(该对象会用于与AMS等服务的跨进程通信)   
+2、通过ZygoteServer()创建服务端的对象 LocalServerSocket (该对象会用于与AMS等服务的跨进程通信)   
 3、调用forkSystemServer()fork出system_server进程   
 4、直接运行fork的SystemServer的run()方法或者调用runSelectLoop(..)进入无限循环,等待通信请求返回再运行run()方法。
 
@@ -131,11 +133,12 @@ ActivityManagerService通常称AMS，主要管理应用进程的生命周期以�
  ...
   mActivityManagerService.initPowerManagement(); 4、初始化电源管理
  ...
- mActivityManagerService.setSystemProcess(); 
+ mActivityManagerService.setSystemProcess(); //设置系统进程
 ```
+
 [SystemServer]startCoreServices():
 ```
- mActivityManagerService.setUsageStatsManager(LocalServices.getService(UsageStatsManagerInternal.class));
+ mActivityManagerService.setUsageStatsManager(LocalServices.getService(UsageStatsManagerInternal.class));//
 ```
 
 [SystemServer]startOtherServices():
@@ -148,6 +151,7 @@ ActivityManagerService通常称AMS，主要管理应用进程的生命周期以�
  ...
  mActivityManagerService.startObservingNativeCrashes() // 启动native异常监听器
 ```
+
 先从ActivityManagerService启动开始。服务启动必会执行到的start()方法。AMS实际执行的start()：
 ```
 private void start() {
@@ -176,6 +180,7 @@ private void start() {
 1、将AMS注册到 ServiceManager。方便统一管理  
 2、其他服务注册到 ServiceManager，如activity、procstats、meminfo、gfxinfo、dbinfo、cpuinfo、permission、processinfo。  
 3、创建ProcessRecord对象维护当前进程的相关信息。   
+
 [ActivityManagerService]systemReady(..)，主要是完成AMS的最后收尾工作   
 1、调起一些关键服务(如AppOpsService)SystemReady()相关的函数，杀死一些常驻进程(没有FLAG_PERSISTENT标志)  
 2、执行goingCallback.run()里面的逻辑。  
@@ -189,15 +194,148 @@ private void start() {
 到此，AMS的启动，准备工作完成同时启动服务，发送广播完成后续工作。
 
 
-###### 3、Launcher
+###### 3、Launcher 
+Launcher的启动可以追溯到 HomeActivity的启动，即` startHomeActivityLocked(currentUserId, "systemReady")`。这个方法关
+注以下几个步骤   
+1、getHomeIntent()。设置Category: addCategory(Intent.CATEGORY_HOME)  
+2、resolveActivityInfo()。通过AppGlobals.getPackageManager()来获取合适的ActivityInfo  
+3、启动。实际启是ActivityStartController的实例。这里的一系列调用流程大概如下：   
+
+ActivityStartController#startHomeActivity ->ActivityStarter#execute()->
+ActivityStarter#startActivity() ->
+ActivityStarter#startActivity() ->
+ActivityStarter#startActivity() ->
+ActivityStarter#startActivityUnchecked() ->
+ActivityStackSupervisor#resumeFocusedStackTopActivityLocked()->
+ActivityStack#resumeTopActivityUncheckedLocked()->
+ActivityStack#resumeTopActivityInnerLocked()->
+ActivityStackSupervisor#startSpecificActivityLocked()-> 如果进程已经启动就启动activity:realStartActivityLocked();
+如果进程没有启动就先启动进程: (AMS)mService.startProcessLocked()。先挑从进程启动的开始: ->
+AMS#startProcessLocked() -> 这里经历多个startProcess()重载方法 ->
+AMS#startProcess() ->
+Process#Process.start() ->
+ZygoteProcess#start() ->
+ZygoteProcess#startViaZygote() ->
+ZygoteProcess#zygoteSendArgsAndGetResult() ->(这里有个插曲是openZygoteSocketIfNeeded(),会发起Socket连接,由ZygoteState中
+的LocalSocket完成)
+ZygoteProcess#attemptZygoteSendArgsAndGetResult()。
+```
+ private Process.ProcessStartResult attemptZygoteSendArgsAndGetResult(
+            ZygoteState zygoteState, String msgStr) throws ZygoteStartFailedEx {
+        try {
+            final BufferedWriter zygoteWriter = zygoteState.mZygoteOutputWriter;
+            final DataInputStream zygoteInputStream = zygoteState.mZygoteInputStream;
+
+            zygoteWriter.write(msgStr); // 与zygote进程中的socket通信，完成数据交换
+            zygoteWriter.flush();
+
+            // Always read the entire result from the input stream to avoid leaving
+            // bytes in the stream for future process starts to accidentally stumble
+            // upon.
+            Process.ProcessStartResult result = new Process.ProcessStartResult();
+            result.pid = zygoteInputStream.readInt();
+            result.usingWrapper = zygoteInputStream.readBoolean();
+
+            if (result.pid < 0) {
+                throw new ZygoteStartFailedEx("fork() failed");
+            }
+
+            return result;
+        } catch (IOException ex) {
+            zygoteState.close();
+            Log.e(LOG_TAG, "IO Exception while communicating with Zygote - "
+                    + ex.toString());
+            throw new ZygoteStartFailedEx(ex);
+        }
+    }
+```
+执行完`zygoteWriter.write(msgStr);zygoteWriter.flush()`后，进程间的socket已经完成。在Zygote进程流程时就提到过，zygote会开启socket，等待来自AMS的
+连接，完成相对应的任务。关键代码为：
+```
+ caller = zygoteServer.runSelectLoop(abiList);
+```
+看到ZygoteServer的runSelectLoop方法：
+```
+Runnable runSelectLoop(String abiList) {
+        ArrayList<FileDescriptor> fds = new ArrayList<FileDescriptor>();
+        ArrayList<ZygoteConnection> peers = new ArrayList<ZygoteConnection>();
+        fds.add(mServerSocket.getFileDescriptor());
+        peers.add(null);
+        while (true) { //无限循环，除非发生连接
+            StructPollfd[] pollFds = new StructPollfd[fds.size()];
+            for (int i = 0; i < pollFds.length; ++i) {
+                pollFds[i] = new StructPollfd();
+                pollFds[i].fd = fds.get(i);
+                pollFds[i].events = (short) POLLIN;
+            }
+            try {
+                Os.poll(pollFds, -1);
+            } catch (ErrnoException ex) {
+                throw new RuntimeException("poll failed", ex);
+            }
+            for (int i = pollFds.length - 1; i >= 0; --i) {
+                if ((pollFds[i].revents & POLLIN) == 0) {
+                    continue;
+                }
+                if (i == 0) {
+                    ZygoteConnection newPeer = acceptCommandPeer(abiList);
+                    peers.add(newPeer);
+                    fds.add(newPeer.getFileDesciptor());
+                } else {
+                    try {
+                        ZygoteConnection connection = peers.get(i);  // 获取连接，返回
+                        final Runnable command = connection.processOneCommand(this);
+                        if (mIsForkChild) {
+                            // We're in the child. We should always have a command to run at this
+                            // stage if processOneCommand hasn't called "exec".
+                            if (command == null) {
+                                throw new IllegalStateException("command == null");
+                            }
+                            return command; 
+                        } else {
+                            // We're in the server - we should never have any commands to run.
+                            if (command != null) {
+                                throw new IllegalStateException("command != null");
+                            }
+                            // We don't know whether the remote side of the socket was closed or
+                            // not until we attempt to read from it from processOneCommand. This shows up as
+                            // a regular POLLIN event in our regular processing loop.
+                            if (connection.isClosedByPeer()) {
+                                connection.closeSocket();
+                                peers.remove(i);
+                                fds.remove(i);
+                            }
+                        }
+                    } catch (Exception e) {
+                       // 省略代码
+                    } finally {
+                       // 省略代码
+                    }
+                }
+            }
+        }
+    }
+```
+从socket中读取到通信信息后会执行到ZygoteConnection#processOneCommand(),从而再fork出一个子进程，通过handleChildProc() -> 
+ZygoteInit.zygoteInit()。到这个ZygoteInit就有点似曾相识了:zygote fork出system_server进程走的同样的流程,最后同过反射获取到SystemServer，
+执行它的main方法。这里的区别就是反射获取的是ActivityThread，而不是SystemServer。
 
 
+###### ActivityThread
 
 
+```
+  // Only resume home activity if isn't finishing.
+  if (r != null && !r.finishing) {
+      moveFocusableActivityStackToFrontLocked(r, myReason);
+      return resumeFocusedStackTopActivityLocked(mHomeStack, prev, null);
+  }
+  return mService.startHomeActivityLocked(mCurrentUser, myReason); // mService就是AMS
+```
 
-###### 、Handle消息机制
+##### Handle消息机制
 
-###### 、Binder了解
+##### Binder了解
 《binder》 https://blog.csdn.net/universus/article/details/6211589
 
 ##### View的绘制流程与自定义view手法
