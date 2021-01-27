@@ -320,7 +320,7 @@ Runnable runSelectLoop(String abiList) {
 ZygoteInit.zygoteInit()。到这个ZygoteInit就有点似曾相识了:zygote fork出system_server进程走的同样的流程,最后同过反射获取到SystemServer，
 执行它的main方法。这里的区别就是反射获取的是ActivityThread，而不是SystemServer。
 
-###### ActivityThread
+###### ActivityThread/Activity
 main方法：
 ```
 public static void main(String[] args) {
@@ -397,11 +397,100 @@ if (normalMode) { // 如果栈顶的activity等待运行启动
 ActivityStackSupervisor#realStartActivityLocked() :前面分析Launcher分叉处的另一边就是这个方法 -> 
 ClientLifecycleManager#scheduleTransaction() ->
 ClientTransaction#schedule()->
-mClient.scheduleTransaction(this): mClient是IApplicationThread的实例 ->
-ActivityThread#scheduleTransaction()  ->
+mClient.scheduleTransaction(this): mClient是IApplicationThread的实例,所以对应是它的服务端ApplicationThread调用方法,下面是具体方法
+```
+ @Override
+ public void scheduleTransaction(ClientTransaction transaction) throws RemoteException {
+     ActivityThread.this.scheduleTransaction(transaction);
+ }
+```
+ ->  ActivityThread?#scheduleTransaction()  -> 
+可以看到，实际上又是ActivityThread去调用scheduleTransaction(),但是在ActivityThread类没有找到scheduleTransaction()这个方法。最后在它的父类
+ClientTransactionHandler 中发现了这个方法：发送一个`EXECUTE_TRANSACTION`的事件消息。
+```
+void scheduleTransaction(ClientTransaction transaction) {
+    transaction.preExecute(this);
+    sendMessage(ActivityThread.H.EXECUTE_TRANSACTION, transaction);
+}
+```
+-> TransactionExecutor#execute(transaction):这里会由`transaction.getCallbacks()`,然后遍历所有的callbacks，并调用它的execute()和
+postExecute()方法。transaction的addCallback()在ActivityStackSupervisor#realStartActivityLocked()方法中有调用，传入的对象是LaunchActivityItem。
+-> LaunchActivityItem#execute() ->
+ClientTransactionHandler#handleLaunchActivity(): 这是个抽象方法，由子类实现，即ActivityThread ->
+ActivityThread#handleLaunchActivity() ->
+ActivityThread#performLaunchActivity():最终在这里完成activity的启动。
+```
+ private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {
+      
+      //省略部分代码。。
+  
+      ContextImpl appContext = createBaseContextForActivity(r);
+      Activity activity = null;
+      try {
+          java.lang.ClassLoader cl = appContext.getClassLoader();  //创建activity
+          activity = mInstrumentation.newActivity(cl, component.getClassName(), r.intent);
+          StrictMode.incrementExpectedActivityCount(activity.getClass());
+          r.intent.setExtrasClassLoader(cl);
+          r.intent.prepareToEnterProcess();
+          if (r.state != null) {
+              r.state.setClassLoader(cl);
+          }
+      }
+    
+      // 这里有个创建Window的步骤，提供给activity依附。具体代码省略
+ 
+      try { // 获取Application
+            Application app = r.packageInfo.makeApplication(false, mInstrumentation);
+       }
+       //省略部分代码。。
+ 
+      activity.mCalled = false;  //调用onCreate(),这里跟Application的onCreate()方法调用一样的。
+      if (r.isPersistable()) {
+           mInstrumentation.callActivityOnCreate(activity, r.state, r.persistentState);
+      } else {
+           mInstrumentation.callActivityOnCreate(activity, r.state);
+      }
+      
+      //省略部分代码。。
+ }
+```
+Instrumentation内的方法
+```
+public void callActivityOnCreate(Activity activity, Bundle icicle) {
+    prePerformCreate(activity);
+    activity.performCreate(icicle);
+    postPerformCreate(activity);
+}
+```
+```
+    final void performCreate(Bundle icicle) {
+        performCreate(icicle, null);
+    }
 
-
-
+    @UnsupportedAppUsage
+    final void performCreate(Bundle icicle, PersistableBundle persistentState) {
+        dispatchActivityPreCreated(icicle);
+        mCanEnterPictureInPicture = true;
+        // initialize mIsInMultiWindowMode and mIsInPictureInPictureMode before onCreate
+        final int windowingMode = getResources().getConfiguration().windowConfiguration
+                .getWindowingMode();
+        mIsInMultiWindowMode = inMultiWindowMode(windowingMode);
+        mIsInPictureInPictureMode = windowingMode == WINDOWING_MODE_PINNED;
+        restoreHasCurrentPermissionRequest(icicle);
+        if (persistentState != null) {
+            onCreate(icicle, persistentState);  //onCreate()方法执行
+        } else {
+            onCreate(icicle);
+        }
+        // 省略代码
+    }
+```
+调用了Activity的performCreate(icicle)，最后调用自己的onCreate()方法，也就是创建Activity时重写的那个onCreate()方法。至此，Activity被创建启动，开始
+Activity的生命周期。    
+本小结源码跟踪是关联Launcher的启动，但是同时也是Activity的启动流程，二者都是类似的。Launcher先fork出一个新进程供ActivityThread运行，activity是依赖
+ActivityThread的活动。总的说Launcher启动可以分为2个步骤：
+* zygote fork新进程，ActivityThread启动；
+* Activity启动；
 
 
 ###### Application的创建。   
