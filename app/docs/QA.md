@@ -320,18 +320,188 @@ Runnable runSelectLoop(String abiList) {
 ZygoteInit.zygoteInit()。到这个ZygoteInit就有点似曾相识了:zygote fork出system_server进程走的同样的流程,最后同过反射获取到SystemServer，
 执行它的main方法。这里的区别就是反射获取的是ActivityThread，而不是SystemServer。
 
-
 ###### ActivityThread
-
-
+main方法：
 ```
-  // Only resume home activity if isn't finishing.
-  if (r != null && !r.finishing) {
-      moveFocusableActivityStackToFrontLocked(r, myReason);
-      return resumeFocusedStackTopActivityLocked(mHomeStack, prev, null);
+public static void main(String[] args) {
+        Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "ActivityThreadMain");
+        // CloseGuard defaults to true and can be quite spammy.  We
+        // disable it here, but selectively enable it later (via
+        // StrictMode) on debug builds, but using DropBox, not logs.
+        
+        CloseGuard.setEnabled(false);
+        Environment.initForCurrentUser();
+        
+        // Set the reporter for event logging in libcore
+        EventLogger.setReporter(new EventLoggingReporter());
+
+        // Make sure TrustedCertificateStore looks in the right place for CA certificates
+        final File configDir = Environment.getUserConfigDirectory(UserHandle.myUserId());
+        TrustedCertificateStore.setDefaultUserDirectory(configDir);
+        Process.setArgV0("<pre-initialized>");
+        Looper.prepareMainLooper();
+
+        // Find the value for {@link #PROC_START_SEQ_IDENT} if provided on the command line.
+        // It will be in the format "seq=114"
+        long startSeq = 0;
+        if (args != null) {
+            for (int i = args.length - 1; i >= 0; --i) {
+                if (args[i] != null && args[i].startsWith(PROC_START_SEQ_IDENT)) {
+                    startSeq = Long.parseLong(
+                            args[i].substring(PROC_START_SEQ_IDENT.length()));
+                }
+            }
+        }
+        ActivityThread thread = new ActivityThread();
+        thread.attach(false, startSeq);
+
+        if (sMainThreadHandler == null) {
+            sMainThreadHandler = thread.getHandler();
+        }
+        if (false) {
+            Looper.myLooper().setMessageLogging(new
+                    LogPrinter(Log.DEBUG, "ActivityThread"));
+        }
+        // End of event ActivityThreadMain.
+        Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+        Looper.loop();
+        throw new RuntimeException("Main thread loop unexpectedly exited");
+    }
+```
+ActivityThread 的main方法准备环境 准备Looper
+
+ActivityThread#attach()-> 
+IActivityManager#attachApplication() IActivityManager是一个aidl文件:
+```
+public class ActivityManagerService extends IActivityManager.Stub
+        implements Watchdog.Monitor, BatteryStatsImpl.BatteryCallback {
+        //。。。。
+        }
+```
+可想而知，这是一个本地binder，真正逻辑在他的服务端。而IActivityManager的服务端就是AMS,这里真正调用也就是AMS#attachApplication() ->
+AMS#attachApplicationLocked():这个方法做了一件很重要的事情就是创建Application，后面在看这段。这个方法的后面一段：
+```
+// See if the top visible activity is waiting to run in this process...
+if (normalMode) { // 如果栈顶的activity等待运行启动
+    try {
+         if (mStackSupervisor.attachApplicationLocked(app)) {
+            didSomething = true;
+         }
+    } catch (Exception e) {
+        Slog.wtf(TAG, "Exception  thrown launching activities in " + app, e);
+        badApp = true;
+    }
+}
+```
+ ->  ActivityStackSupervisor#attachApplicationLocked(app):这里会取出栈内所有的activity记录与参数app比对，然后执行到
+ActivityStackSupervisor#realStartActivityLocked() :前面分析Launcher分叉处的另一边就是这个方法 -> 
+ClientLifecycleManager#scheduleTransaction() ->
+ClientTransaction#schedule()->
+mClient.scheduleTransaction(this): mClient是IApplicationThread的实例 ->
+ActivityThread#scheduleTransaction()  ->
+
+
+
+
+
+###### Application的创建。   
+前面在ActivityThread的执行流程中提到调用了AMS服务端的方法，并在过程中创建了Application。创建Application的代码片段在AMS#attachApplicationLocked()
+```
+ thread.bindApplication( /* 省略参数 */  );
+```
+thread是IApplicationThread的实例。这个IApplicationThread是一个本地binder，它的服务端是ApplicationThread，是ActivityThread的一个内部类。 ->
+ApplicationThread#bindApplication(): 这个方法最终会将application数据通过Handler发送类型 `H.BIND_APPLICATION`发送出
+去,最后到handleBindApplication()方法处理。 -> 
+ApplicationThread#handleBindApplication(): 在这个方法里会创建出Application以及调用他的onCreate()方法。先看创建。在
+`app = data.info.makeApplication(data.restrictedBackupMode, null);`。data也是在ActivityThread的一个内部类：
+```
+ static final class AppBindData {
+        LoadedApk info;
+        // 省略其他
+        }
+```
+LoadedApk#makeApplication()方法，这里instrumentation = null。
+```
+public Application makeApplication(boolean forceDefaultAppClass,Instrumentation instrumentation) {
+        if (mApplication != null) { //已创建过直接返回创建好的，
+            return mApplication;
+        }
+        Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "makeApplication");
+
+        Application app = null;
+        String appClass = mApplicationInfo.className;
+        if (forceDefaultAppClass || (appClass == null)) {
+            appClass = "android.app.Application";
+        }
+        try {
+            java.lang.ClassLoader cl = getClassLoader();
+            if (!mPackageName.equals("android")) {
+                Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER,
+                        "initializeJavaContextClassLoader");
+                initializeJavaContextClassLoader();
+                Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+            }
+            ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this); // 创建上下文
+            app = mActivityThread.mInstrumentation.newApplication(  //见Instrumentation#newApplication()
+                    cl, appClass, appContext);
+            appContext.setOuterContext(app);
+        } catch (Exception e) {
+            if (!mActivityThread.mInstrumentation.onException(app, e)) {
+                Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+                throw new RuntimeException(
+                    "Unable to instantiate application " + appClass
+                    + ": " + e.toString(), e);
+            }
+        }
+        mActivityThread.mAllApplications.add(app); 
+        mApplication = app;
+        if (instrumentation != null) { //这里为null，不会调用callApplicationOnCreate()
+            try {
+                instrumentation.callApplicationOnCreate(app);
+            } catch (Exception e) {
+                if (!instrumentation.onException(app, e)) {
+                    Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+                    throw new RuntimeException(
+                        "Unable to create application " + app.getClass().getName()
+                        + ": " + e.toString(), e);
+                }
+            }
+        }
+        // Rewrite the R 'constants' for all library apks.
+        SparseArray<String> packageIdentifiers = getAssets().getAssignedPackageIdentifiers();
+        final int N = packageIdentifiers.size();
+        for (int i = 0; i < N; i++) {
+            final int id = packageIdentifiers.keyAt(i);
+            if (id == 0x01 || id == 0x7f) {
+                continue;
+            }
+            rewriteRValues(getClassLoader(), packageIdentifiers.valueAt(i), id);
+        }
+        Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+        return app;
+    }
+```
+Instrumentation#newApplication():
+```
+  public Application newApplication(ClassLoader cl, String className, Context context)
+            throws InstantiationException, IllegalAccessException, 
+            ClassNotFoundException {
+        Application app = getFactory(context.getPackageName())
+                .instantiateApplication(cl, className);
+        app.attach(context); //绑定上下文
+        return app;
   }
-  return mService.startHomeActivityLocked(mCurrentUser, myReason); // mService就是AMS
 ```
+以上2个方法就是Application的具体创建过程。接下来将会调用到Application的onCreate()方法。    
+Application的onCreate()方法被调用片段代码为: `mInstrumentation.callApplicationOnCreate(app);`mInstrumentation是
+Instrumentation的对象实例，这个完整方法为：
+```
+  public void callApplicationOnCreate(Application app) {
+        app.onCreate();
+  }
+``` 
+在Application创建出来后，执行了它的onCreate()方法。
+
 
 ##### Handle消息机制
 
