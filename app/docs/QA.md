@@ -320,7 +320,14 @@ Runnable runSelectLoop(String abiList) {
 ZygoteInit.zygoteInit()。到这个ZygoteInit就有点似曾相识了:zygote fork出system_server进程走的同样的流程,最后同过反射获取到SystemServer，
 执行它的main方法。这里的区别就是反射获取的是ActivityThread，而不是SystemServer。
 
-###### ActivityThread/Activity
+###### 3.1 ActivityThread (Activity启动)
+ActivityThread是Android应用程序的入口，也是任何一个进程的主线程入口。可能会有人理解为ActivityThread就是主线程。
+但其实ActivityThread并不是线程，但可以理解为ActivityThread所在的线程就是主线程。下面是ActivityThread类的核心
+方法。可以看到Android系统把每个应用程序当成java应用来看待：以`main(String[] args)`作为程序的入口。应用启动后会
+执行它的`main(String[] args)`。除去log的输出，初始化外，核心代码就一句：`Looper.loop();`。loop()里就是维护着一
+个无线循环，不断从自己的MessageQueue取出Message，然后分发出去。如果没有消息时，会进入阻塞状态。当消息来了又被唤醒
+分发消息事件。中间阻塞与唤醒是通过`MessageQueue #nativePollOnce()`与 `MessageQueue #nativeWake()`来实现，
+都是native方法。
 main方法：
 ```
 public static void main(String[] args) {
@@ -368,8 +375,8 @@ public static void main(String[] args) {
         throw new RuntimeException("Main thread loop unexpectedly exited");
     }
 ```
-ActivityThread 的main方法准备环境 准备Looper
-
+ActivityThread 的main方法准备环境,准备Looper,Looper启动。  
+看到`attach`,这里执行流程如下：  
 ActivityThread#attach()-> 
 IActivityManager#attachApplication() IActivityManager是一个aidl文件:
 ```
@@ -395,8 +402,26 @@ if (normalMode) { // 如果栈顶的activity等待运行启动
 ```
  ->  ActivityStackSupervisor#attachApplicationLocked(app):这里会取出栈内所有的activity记录与参数app比对，然后执行到
 ActivityStackSupervisor#realStartActivityLocked() :前面分析Launcher分叉处的另一边就是这个方法 -> 
-ClientLifecycleManager#scheduleTransaction() ->
-ClientTransaction#schedule()->
+ClientLifecycleManager#scheduleTransaction() 
+```
+void scheduleTransaction(ClientTransaction transaction) throws RemoteException {
+     final IApplicationThread client = transaction.getClient();
+     transaction.schedule();
+        if (!(client instanceof Binder)) {
+            // If client is not an instance of Binder - it's a remote call and at this point it is
+            // safe to recycle the object. All objects used for local calls will be recycled after
+            // the transaction is executed on client in ActivityThread.
+            transaction.recycle();
+        }
+}
+```
+-> ClientTransaction#schedule()
+```
+public void schedule() throws RemoteException {
+    mClient.scheduleTransaction(this);
+}
+```
+->
 mClient.scheduleTransaction(this): mClient是IApplicationThread的实例,所以对应是它的服务端ApplicationThread调用方法,下面是具体方法
 ```
  @Override
@@ -449,8 +474,7 @@ ActivityThread#performLaunchActivity():最终在这里完成activity的启动。
            mInstrumentation.callActivityOnCreate(activity, r.state, r.persistentState);
       } else {
            mInstrumentation.callActivityOnCreate(activity, r.state);
-      }
-      
+      }     
       //省略部分代码。。
  }
 ```
@@ -493,7 +517,7 @@ ActivityThread的活动。总的说Launcher启动可以分为2个步骤：
 * Activity启动；
 
 
-###### Application的创建。   
+###### 3.2 Application的创建。   
 前面在ActivityThread的执行流程中提到调用了AMS服务端的方法，并在过程中创建了Application。创建Application的代码片段在AMS#attachApplicationLocked()
 ```
  thread.bindApplication( /* 省略参数 */  );
@@ -591,8 +615,9 @@ Instrumentation的对象实例，这个完整方法为：
 ``` 
 在Application创建出来后，执行了它的onCreate()方法。
 
-
 ##### Handle消息机制
+
+
 
 ##### Binder了解
 《binder》 https://blog.csdn.net/universus/article/details/6211589
