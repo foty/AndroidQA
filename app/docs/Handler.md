@@ -104,13 +104,13 @@ public Handler(@NonNull Looper looper, @Nullable Callback callback, boolean asyn
 * 序号1：获取Looper，这里如果当前线程并没有设置Looper的话，me == null。也是保证了保存的looper与取出的looper是在同一个线程下的同一个looper。
 * 序号2：从MessageQueue中取出消息对象
 * 序号3：将消息数据发送到对应的Handler去处理
-消息是怎么取出来的，看到MessageQueue#next()：
+具体跟踪消息是怎么取出来的，看到MessageQueue#next()：
 ```
 Message next() {
      //....省略代码
     for (;;) {
         //....省略代码
-        nativePollOnce(ptr, nextPollTimeoutMillis);
+        nativePollOnce(ptr, nextPollTimeoutMillis);  //1 调用本地方法，阻塞nextPollTimeoutMillis毫秒
         // 。。。
         Message prevMsg = null;
         Message msg = mMessages;
@@ -118,7 +118,7 @@ Message next() {
             // Stalled by a barrier.  Find the next asynchronous message in the queue.
             do {
                prevMsg = msg;
-               msg = msg.next;
+               msg = msg.next;  // 取出msg
             } while (msg != null && !msg.isAsynchronous());
         }
         if (msg != null) {
@@ -136,7 +136,7 @@ Message next() {
                 msg.next = null;
                 if (DEBUG) Log.v(TAG, "Returning message: " + msg);
                 msg.markInUse();
-                return msg;
+                return msg;   //返回msg。
             }
         } else {
             // No more messages.
@@ -146,7 +146,9 @@ Message next() {
    }
 }
 ```
-
+解析：  
+取出消息的方法`Message#next()`整体上是处于一个死循环中。通过nativePollOnce()来阻塞线程。如果有消息来，线程会被唤醒，取出消息返回；如果没有消息，
+线程重新进入阻塞状态，直达被再唤醒。`nextPollTimeoutMillis`表示阻塞的时长。0表示立即返回，-1表示持续阻塞，除非被唤醒。
 
 
 
