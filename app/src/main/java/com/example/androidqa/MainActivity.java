@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -13,14 +14,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
-       new  Handler().post(new Runnable() {
-           @Override
-           public void run() {
-               //todo
-           }
-       });
+        new Handler().post(new Runnable() {
+            @Override
+            public void run() {
+                //todo
+            }
+        });
 
-
+        Message msg = new Message();
+        msg.what = 1;
+        msg.obj = 100;
+        new Handler().sendMessage(msg);
 
     }
 }
