@@ -148,7 +148,7 @@ Message next() {
 ```
 解析：  
 取出消息的方法`Message#next()`整体上是处于一个死循环中。  
-序号1-> 通过nativePollOnce()来阻塞线程。如果有消息来，线程会被唤醒，取出消息返回；如果没有消息，线程重新进入阻塞状态，直达被再唤
+序号1-> 通过nativePollOnce()来阻塞线程。如果有消息来，线程会被唤醒，取出消息返回；如果没有消息，线程重新进入阻塞状态，直达被再次唤
 醒。`nextPollTimeoutMillis`表示阻塞的时长。0表示立即返回，-1表示持续阻塞，除非被唤醒。`nativePollOnce()`是navive层方法，
 通过epoll机制实现阻塞与唤醒。在java层对应的方法就是`nativePollOnce()`/`nativeWake()`。(太菜了，不懂linux，深入不下去，跳过吧)。  
 2-> 取出msg。   
@@ -179,11 +179,11 @@ Handler#sendMessage() -> Handler#sendMessageDelayed() -> Handler#sendMessageAtTi
             msg.when = when;  //时间，与Looper取出msg的时间有关
             Message p = mMessages;
             boolean needWake;
-            if (p == null || when == 0 || when < p.when) {
+            if (p == null || when == 0 || when < p.when) { // 第一个msg或者插队msg
                 // New head, wake up the event queue if blocked.
                 msg.next = p;
                 mMessages = msg;
-                needWake = mBlocked;
+                needWake = mBlocked;  //并不需要特殊处理,保持原来状态。
             } else {
                 // Inserted within the middle of the queue.  Usually we don't have to wake
                 // up the event queue unless there is a barrier at the head of the queue
@@ -191,9 +191,9 @@ Handler#sendMessage() -> Handler#sendMessageDelayed() -> Handler#sendMessageAtTi
                 needWake = mBlocked && p.target == null && msg.isAsynchronous();
                 Message prev;
                 for (;;) {
-                    prev = p;
+                    prev = p; 
                     p = p.next;
-                    if (p == null || when < p.when) {
+                    if (p == null || when < p.when) { //遍历这个消息队列，找到最尾那个消息，或者按照时间找到需要插队的位置
                         break;
                     }
                     if (needWake && p.isAsynchronous()) {
@@ -201,21 +201,28 @@ Handler#sendMessage() -> Handler#sendMessageDelayed() -> Handler#sendMessageAtTi
                     }
                 }
                 msg.next = p; // invariant: p == prev.next
-                prev.next = msg;
+                prev.next = msg;  // 入队
             }
 
             // We can assume mPtr != 0 because mQuitting is false.
             if (needWake) { 
-                nativeWake(mPtr);  //唤醒Looper，不在阻塞。
+                nativeWake(mPtr);  //如果有需要，唤醒Looper，不在阻塞。
             }
         }
-        return true;
+        return true;  // msg入队成功返回
     }
 ```
-上面就是
+msg入队列有2种情况：  
+1、非正常入队：  
+p == null -> 是第一个msg  
+when == 0 -> when默认SystemClock.uptimeMillis()，不太可能为0  
+when < p.when -> 准备入队msg的时间<当前队列处理的msg,可以认为前一个msg(mMessages)是延迟/异步消息，这个msg是插队。  
+2、正常入队：  
+p == null || when < p.when -> 找到最后一个msg，或者按照时间找到需要插队的位置  
+整个msg入队的过程都不需要主动去改变Looper线程状态，保持原状态。
 
 
-###### select、poll、epoll
+###### select、poll、epoll机制的一点理解
 select、poll、epoll都是IO多路复用机制，可以同时监控多个描述符，当某个描述符就绪(读或写就绪)，则立刻通知相应程序进行读或写操作。本质上select、
 poll、epoll都是同步I/O，即读写是阻塞的。
 
@@ -246,30 +253,59 @@ epoll的对比与优势：
 
 
 
-###### Handler面试的几个问题
-Handler 的基本原理  
-子线程中怎么使用 Handler  
-MessageQueue 获取消息是怎么等待  
-为什么不用 wait 而用 epoll 呢？  
-多个线程给 MessageQueue 发消息，如何保证线程安全  
-非 UI 线程真的不能操作 View 吗    
-一个线程有几个looper，几个handler，如果你说一个，他会问，如何保证looper唯一        
-> 1个  
-我们能在主线程直接new无参handler吗  
-> 可以  
-主线程是一直处于死循环状态，那么android中其他组件，比如activity的生命周期等式如何在主线程执行的？  
->开启了子线程/新进程执行  
-子线程能new handler吗?我们应该怎么样在子线程new handler  
-> 在特殊情况处理下可以在子线程new handler。  
-为什么主线程不用调用looper.prepar和looper.looper   
-我们的looper通过什么实现与线程关联  
-为什么looper死循环应用(UI)不卡顿(anr) (那你谈谈epoll机制)  
+
+###### Handler的几个问题
+* 1、Handler 的基本原理
+> 上面总结。  
+
+* 2、子线程中怎么使用 Handler?
+> 在创建Handelr对象前调用`Looper.prepare();`,在创建完后调用`Looper.loop();`。
+
+* 3、MessageQueue获取消息是怎么等待?
+> 通过native方法`nativePollOnce()`来阻塞线程实现消息等待。`nativePollOnce()`则是由epoll机制中的epoll_wait()函数等待的。
+
+* 4、为什么不用 wait 而用 epoll 呢？  
+> java中的 wait/notify 也能实现阻塞等待消息的功能。但是当阻塞/唤醒控制写在native层时，只使用java的 wait/notify就不够了。至于为什么用epoll不用select？
+select只有在调用方法知道函数由返回后，内核才对所有监视的文件描述符进行扫描，而epoll则先通过epoll_ctl()来注册一个文件描述符，一旦基于某个文件描述符就绪时，
+内核会采用类似callback的回调机制，迅速激活这个文件描述符，当进程调用epoll_wait() 时便得到通知。相比下没有通过遍历文件描述符，而是通过监听回调的的机制。
+
+* 5、多个线程给MessageQueue发消息，如何保证线程安全?
+> 不太可能出现在多线程情况下给同一个MessageQueue发送消息。
+
+* 6、非UI线程真的不能操作 View 吗?
+> 可以。准确来讲操作View其实并不是限定UI线程，而是源线程。就是创建View所在的线程与操作View的线程是不是同一个。如果在子线程创建View，那在这个子线程操作这个View
+是完全可以的。
+
+* 7、一个线程有几个looper，几个handler，如果你说一个，他会问，如何保证looper唯一?     
+> 1个，多个Handler。通过ThreadLocal保证looper唯一。1、ThreadLocal的特性是当某线程使用ThreadLocal存储数据后，只有在该线程可以读取到存储的数据(谁保存谁访
+问)。ThreadLocal内部会基于当前线程维护一个ThreadLocalMap(定制的哈希映射表)。表中实体对象以ThreadLocal为key，Looper为value保存。2、并且保存Looper方法只能
+被调用一次。
+
+* 8、我们能在主线程直接new无参handler吗?
+> 可以，主线程的Looper在ActivityThread初始化的时候就被初始化了。
+
+* 9、主线程是一直处于死循环状态，那么android中其他组件，比如activity的生命周期等式如何在主线程执行的？  
+> 通过binder+Handler发送消息到主线程，再根据消息分发到Handler处理。在ActivityThread中的Looper进入循环之前有个`attach()`的方法。这里会建立起一个本地与服务
+端的Binder通信，对应的服务端就是ApplicationThread。ApplicationThread呢又会发起与AMS的binder通信。AMS就是应用进程的生命周期等的实际管理者。最终就是AMS处理
+完流程后通过Binder与ApplicationThread通信，ApplicationThread通过Handler发送消息到MessageQueue中。MessageQueue有了消息便不在阻塞，将消息分发到对应的
+Handler处理，这些消息就包括activity的生命周期等。
+  
+* 10、为什么主线程不用调用looper.prepare()和looper.looper()?
+> 因为主线程的Looper已经在ActivityThread初始化的时候就调用了这2个方法。
+
+* 11、我们的looper通过什么实现与线程关联?
+> ThreadLocal。ThreadLocal内部会基于当前线程维护一个ThreadLocalMap(定制的哈希映射表)。表中实体对象以ThreadLocal为key，Looper为value保存。
+
+* 12、为什么looper死循环应用(UI)不卡顿(anr) (那你谈谈epoll机制)?
+>
+
 如果我们的子线程没有消息处理的情况下，我们如何优化looper   
 Handler 怎么进行线程通信，原理是什么？  
 ThreadLocal 的原理，以及在 Looper 是如何应用的？  
 Handler#post(Runnable) 是如何执行的  
 Handler#sendMessage() 和 Handler#postDelay() 的区别？  
 多个 Handler 发消息时，消息队列如何保证线程安全？
+> 用synchronized代码块去进行同步
 为什么 MessageQueue 不设置消息上限，message上限怎么办。  
 Looper 死循环为什么不阻塞主线程？  
 Handler内存泄漏的原因？  
