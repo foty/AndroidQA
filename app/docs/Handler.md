@@ -169,9 +169,33 @@ Handler#sendMessage() -> Handler#sendMessageDelayed() -> Handler#sendMessageAtTi
         return queue.enqueueMessage(msg, uptimeMillis);
     }
 ``` 
-看到上面了，`msg.target`就是Handler本身。所以`msg.target.dispatchMessage(msg)`最终是回到了Handler#dispatchMessage()。而当我们重写
-了Handler的dispatchMessage()后，消息最终到达我们写的dispatchMessage()方法。流程结束。   
-为了探究整个消息发送的流程，跟踪进入到MessageQueue#enqueueMessage()方法：
+看到上面了，`msg.target`就是Handler本身。所以`msg.target.dispatchMessage(msg)`最终是回到了Handler#dispatchMessage()。看下
+Handler#dispatchMessage()方法:  
+```
+    public void dispatchMessage(@NonNull Message msg) {
+        if (msg.callback != null) {
+            handleCallback(msg); // 1
+        } else {
+            if (mCallback != null) { // 2
+                if (mCallback.handleMessage(msg)) {
+                    return;
+                }
+            }
+            handleMessage(msg); // 3
+        }
+    }
+    
+    // 1的具体方法
+    private static void handleCallback(Message message) {
+        message.callback.run();
+    }
+```
+首先判断msg的callback是否为空，如果不是null,则执行它的run方法。接着判断mCallback，mCallback是在创建Handler实例时候被赋值，最后才是我们重写了Handler
+的dispatchMessage()后，消息最终执行到我们写的dispatchMessage()方法。总的来说就是一个回调顺序的优先级。相对应的是不同的使用构造方法，不同的发送消息方式：   
+1、与构造方法无关，使用postXXX()方式发送消息使用此回调,常见的如 post()、postDelay()；
+2、与创建对象时使用的构造方法有关，需要一个Handler.Callback对象；
+3、默认情况，使用也是最多的。  
+为了探究整个消息发送的流程，从消息的发送，取出，分发都有了，还差一个入队的步骤。跟踪进入到MessageQueue#enqueueMessage()方法：
 ```
     boolean enqueueMessage(Message msg, long when) {
          // 省略代码。。。
@@ -262,15 +286,16 @@ epoll的对比与优势：
 > 在创建Handelr对象前调用`Looper.prepare();`,在创建完后调用`Looper.loop();`。
 
 * 3、MessageQueue获取消息是怎么等待?
-> 通过native方法`nativePollOnce()`来阻塞线程实现消息等待。`nativePollOnce()`则是由epoll机制中的epoll_wait()函数等待的。
+> 通过native方法`nativePollOnce()`来阻塞线程实现消息等待。`nativePollOnce()`则是由native层epoll机制中的epoll_wait()函数等待的。
 
 * 4、为什么不用 wait 而用 epoll 呢？  
 > java中的 wait/notify 也能实现阻塞等待消息的功能。但是当阻塞/唤醒控制写在native层时，只使用java的 wait/notify就不够了。至于为什么用epoll不用select？
 select只有在调用方法知道函数由返回后，内核才对所有监视的文件描述符进行扫描，而epoll则先通过epoll_ctl()来注册一个文件描述符，一旦基于某个文件描述符就绪时，
 内核会采用类似callback的回调机制，迅速激活这个文件描述符，当进程调用epoll_wait() 时便得到通知。相比下没有通过遍历文件描述符，而是通过监听回调的的机制。
+epoll机制是一种高效的IO多路复用机制，当线程空闲时，它会进入休眠状态，不会消耗大量的CPU资源。
 
 * 5、多个线程给MessageQueue发消息，如何保证线程安全?
-> 不太可能出现在多线程情况下给同一个MessageQueue发送消息。
+> 用锁(synchronized)
 
 * 6、非UI线程真的不能操作 View 吗?
 > 可以。准确来讲操作View其实并不是限定UI线程，而是源线程。就是创建View所在的线程与操作View的线程是不是同一个。如果在子线程创建View，那在这个子线程操作这个View
@@ -296,25 +321,64 @@ Handler处理，这些消息就包括activity的生命周期等。
 * 11、我们的looper通过什么实现与线程关联?
 > ThreadLocal。ThreadLocal内部会基于当前线程维护一个ThreadLocalMap(定制的哈希映射表)。表中实体对象以ThreadLocal为key，Looper为value保存。
 
-* 12、为什么looper死循环应用(UI)不卡顿(anr) (那你谈谈epoll机制)?
->
+* 12、为什么looper死循环应用，UI不卡顿(anr) (那你谈谈epoll机制)?
+> Looper的死循环与UI卡顿(ANR)是2码事。Looper上的死循环，是不断获取msg，然后分发出去消费掉；在没有msg时，Looper处于空闲状
+态，线程进入阻塞释放CPU执行权，等待唤醒。Looper的死循环是必要的。UI是事件循环来驱动的，每绘制一帧都是一次消息事件。如果在处理这个消息时的某个方法耗时太长，新来的
+事件不能及时得到处理，就会出现卡顿、卡死现象，甚至出现ANR(anr是指AMS和WMS检测App的响应时间，如果App在特定时间无法相应屏幕触摸或键盘输入时间，或者特定事件没有
+处理完毕，就会出现ANR)。所以卡顿现象是Looper取出消息之后的消息处理的情况所致，跟Looper无关。此外Handler还有消息屏障，确保屏障消息可以优先处理，因此感觉不到卡顿。
 
-如果我们的子线程没有消息处理的情况下，我们如何优化looper   
-Handler 怎么进行线程通信，原理是什么？  
-ThreadLocal 的原理，以及在 Looper 是如何应用的？  
-Handler#post(Runnable) 是如何执行的  
-Handler#sendMessage() 和 Handler#postDelay() 的区别？  
-多个 Handler 发消息时，消息队列如何保证线程安全？
+* 13、Looper死循环为什么不阻塞主线程?
+> 要搞清楚一件事是Looper的死循环是一种通俗的说法，它其实是循环消息处理，不断取出消息，分发下去，执行相关的操作。如果循环结束了，那么应用也结束了。从某个角度上看，
+Looper的死循环确实是在阻塞主线程，没有消息时线程阻塞，进入空闲状态。如果主线程的Looper退出了循环，那么代表着这个应用也退出了。而且应用活动不仅仅是只靠一条主线程，
+还有其他线程共同作用。比如binder线程。当其他线程发送消息进入到主线程消息队列，也会通过Looper分发到对应的Handler处理。
+
+* 14、如果我们的子线程(创建Handler)没有消息处理的情况下，我们如何优化looper
+> 如果子线程是长期的，可以参考主线程Looper，让其阻塞，需要时在唤醒。如果是短期的，可以直接调用Looper#quit()退出，释放内存，结束线程。
+
+* 15、ThreadLocal的原理，以及在Looper是如何应用的？
+> 前面ThreadLocal介绍。ThreadLocal内部会基于当前线程维护一个ThreadLocalMap(定制的哈希映射表)。表中实体对象以ThreadLocal为key，Looper为value保存。保证
+Looper的唯一性。
+
+* 16、Handler#post(Runnable) 是如何执行的?
+> 先通过getPostMessage()将Runnable对象转换成Message对象(Runnable对象是Message的callback),赋值给到Message.callback。然后入队列，最后在
+dispatchMessage的时候回调message.callback.run()。其他没有特别的地方。
+
+* 17、Handler#sendMessage() 和 Handler#postDelay()的区别？  
+> 首先共同点是俩者都会执行到sendMessageDelayed()方法。#sendMessage()是直接传递一个Message对象，不需要额外再处理参数；#postDelay()传递的是Runnable对象，
+需要通过getPostMessage()将Runnable参数转换成Message参数。把Runnable对象赋值给Message的callback属性。最后消息分发的时候回调Runnable的run方法。
+
+* 18、多个Handler发消息时，消息队列如何保证线程安全？
 > 用synchronized代码块去进行同步
-为什么 MessageQueue 不设置消息上限，message上限怎么办。  
-Looper 死循环为什么不阻塞主线程？  
-Handler内存泄漏的原因？  
-Message.callback 与 Handler.callback 哪个优先？  
-Handler.callback 和 handlemessage() 都存在，但 callback 返回 true，handleMessage() 还会执行么？  
-IdleHandler 是什么？怎么使用，能解决什么问题？  
-同步屏障问题  
-Looper会一直消耗系统资源吗？  
-android的Handle机制，Looper关系，主线程的Handler是怎么判断收到的消息是哪个Handler传来的？  
-Handler机制流程、Looper中延迟消息谁来唤醒Looper？  
-handler机制中如何确保Looper的唯一性？  
-Handler 是如何能够线程切换，发送Message的？
+
+* 19、为什么 MessageQueue 不设置消息上限，message上限怎么办。
+> 个人理解是应用的活动是由消息事件驱动的，无法计算出一个应用活动需要多少消息事件，所以不设置上限。其实在调用sendMessage()的时候，是向message这个链表的尾端插入一
+个message，这个长度是没有限制的。但是如果你不断通过new message的方式去调用sendMessage()，是会出现内存溢出的问题；可以使用Message.obtain()方法代替new对象来
+获取消息，此方法在消息池中获得一个消息时，消息池中缓存的消息数就减1。当消息池中的消息数大于MAX_POOL_SIZE的时候，则消息池中的消息数不加一，也不将消息添加到消息池
+中，而这个消息池主要用来重复利用从而避免更多的内存消耗。
+
+* 20、Handler内存泄漏的原因？
+> MessageQueue持有Message，Message持有activity
+
+* 21、Message.callback 与 Handler.callback 哪个优先？ 
+>  优先级： Message.callback > Handler.callback(mCallback)
+
+* 22、Handler.callback和handleMessage()都存在，但callback返回true，handleMessage()还会执行么？  
+> 不会，有return关键字。
+
+* 23、IdleHandler是什么？怎么使用，能解决什么问题？
+> 空闲监听器，是一个执行预处理逻辑的接口，有一个Boolean类型返回值的方法。当返回false时，会移除自己，不再执行。当消息队列空闲时会回调它的queueIdle()方法。
+使用方法:调用MessageQueue#addIdleHandler()方法。能解决什么问题：主线程能做的，它都能做，适合优先级没有那么高的一些任务，也不能太耗时；像在一些第三方工具上。
+
+* 24、同步屏障问题  
+* 25、Looper会一直消耗系统资源吗?
+> 不会，looper获取msg的过程使用到了epoll机制。epoll机制是一种高效的IO多路复用机制，当线程空闲时，它会进入休眠状态，不会消耗大量的CPU资源。
+
+* 26、主线程的Handler是怎么判断收到的消息是哪个Handler传来的？
+> 通过Message的target来标注。
+
+* Handler机制流程、Looper中延迟消息谁来唤醒Looper？   
+* Handler是如何能够线程切换，发送Message的?
+* 为什么建议用obtain方法创建Message?
+> Message本身包含两个Message对象，一个是sPool，一个是next，但通过看源码可知道sPool是一个static对象，是所有对象共有，Message.sPool就是一个单链表结构，
+Message就是单链表中的一个节点。使用obtain方法，取的是Message的sPool，改变sPool指向sPool的next，取出sPool本身，并清空该Message的flags和next。这样的好
+处是是可避免重复创建多个实例对象，可以取消息池子之前已经存在的消息。
