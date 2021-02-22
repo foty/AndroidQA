@@ -388,9 +388,15 @@ MessageQueue就会寻找此后队列中的第一个异步消息处理，忽略�
 * 26、主线程的Handler是怎么判断收到的消息是哪个Handler传来的？
 > 通过Message的target来标注。
 
-* Handler机制流程、Looper中延迟消息谁来唤醒Looper？   
-* Handler是如何能够线程切换，发送Message的?
-* 为什么建议用obtain方法创建Message?
+* 27、Looper中延迟消息谁来唤醒Looper？   
+> epoll机制？(涉及到底层，应该是epoll机制中有个定时api)
+
+* 28、Handler是如何能够线程切换，发送Message的?
+> 创建Handler实例时会从当前线程获取Looper，MessageQueue等。当使用Handler实例发送消息时，msg会进入到MessageQueue，最后由Looper取出msg分发到对应
+Handler的dispatchMessage()方法。如果在线程A创建的Handler，那么Looper，MessageQueue也都在线程A上。如果在线程B使用这个Handler实例发出消息，但是Looper、
+MessageQueue是在线程A启动的，最终msg也是回到了线程A中被处理。于是就完成了线程B -> 线程A 的切换。
+
+* 29、为什么建议用obtain方法创建Message?
 > Message本身包含两个Message对象，一个是sPool，一个是next，但通过看源码可知道sPool是一个static对象，是所有对象共有，Message.sPool就是一个单链表结构，
 Message就是单链表中的一个节点。使用obtain方法，取的是Message的sPool，改变sPool指向sPool的next，取出sPool本身，并清空该Message的flags和next。这样
-的好处是是可避免重复创建多个实例对象，可以取消息池子之前已经存在的消息。
+的好处是是可避免重复创建多个实例对象，提升效率，可以取消息池子之前已经存在的消息对象。
