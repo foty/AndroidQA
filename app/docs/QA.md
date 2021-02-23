@@ -33,7 +33,7 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 ##### Activity的启动流程 (API 28)
 启动流程涉及到以下多个点
 * android 中的消息机制(另开篇幅)
-* 同步屏障(消息机制)
+* 同步屏障(消息机制。参见Handler部分)
 * binder通信(另开篇幅)
 * zygote进程
 * system_server进程
@@ -56,7 +56,8 @@ platform/system/core/init.cpp。(系统版本不一样，所有文件路径或�
 由c++实现。(个人学识有限，看不懂c++文件，只能照葫芦画瓢，翻翻源码，作作记录)。在 init.cpp的主函数main()方法中，使用
 epoll机制+死循环维持init(Android)进程一直运行。主函数一部分解析了有关zygote进程的配置文件：
 platform/system/core/rootdir/init.rc，从而fork出zygote进程。   
-一句话概括：Linux的init进程执行到platform/system/core/init.cpp，在这个文件的主函数解析init.rc文件fork出zygote进程。
+一句话概括：Linux的init进程执行到platform/system/core/init.cpp，在这个文件的主函数解析init.rc文件fork出zygote进程。进程变化为：init(Linux) ->
+init(Android) -> zygote。
 
 * zygote进程初始化
 > zygote进程被孵化后会执行到platform/frameworks/base/cmds/app_process/app_main.cpp文件。app_main.cpp的主函数中
@@ -91,7 +92,7 @@ SystemServer 的run方法里主要做的事情有：
 3、加载android_servers.so库，初始化native服务  
 4、初始化系统context  
 5、创建、初始化系统服务管理器-SystemServiceManager  
-6、启动相关服务(引导、核心、其他)  
+6、启动相关服务(引导服务、核心服务、其他服务)  
 7、Looper启动  
 
 * 重点关注服务启动部分
@@ -199,7 +200,7 @@ Launcher的启动可以追溯到 HomeActivity的启动，即` startHomeActivityL
 注以下几个步骤   
 1、getHomeIntent()。设置Category: addCategory(Intent.CATEGORY_HOME)  
 2、resolveActivityInfo()。通过AppGlobals.getPackageManager()来获取合适的ActivityInfo  
-3、启动。实际启是ActivityStartController的实例。这里的一系列调用流程大概如下：   
+3、启动。实际启动是ActivityStartController的实例。这里的一系列调用流程大概如下：   
 
 ActivityStartController#startHomeActivity ->ActivityStarter#execute()->
 ActivityStarter#startActivity() ->
@@ -317,7 +318,7 @@ Runnable runSelectLoop(String abiList) {
     }
 ```
 从socket中读取到通信信息后会执行到ZygoteConnection#processOneCommand(),从而再fork出一个子进程，通过handleChildProc() -> 
-ZygoteInit.zygoteInit()。到这个ZygoteInit就有点似曾相识了:zygote fork出system_server进程走的同样的流程,最后同过反射获取到SystemServer，
+ZygoteInit.zygoteInit()。到这个ZygoteInit就有点似曾相识了:与zygote fork出system_server进程走的同样的流程,最后同过反射获取到SystemServer，
 执行它的main方法。这里的区别就是反射获取的是ActivityThread，而不是SystemServer。
 
 ###### 3.1 ActivityThread (Activity启动)
@@ -439,8 +440,8 @@ void scheduleTransaction(ClientTransaction transaction) {
 }
 ```
 -> TransactionExecutor#execute(transaction):这里会由`transaction.getCallbacks()`,然后遍历所有的callbacks，并调用它的execute()和
-postExecute()方法。transaction的addCallback()在ActivityStackSupervisor#realStartActivityLocked()方法中有调用，传入的对象是LaunchActivityItem。
--> LaunchActivityItem#execute() ->
+postExecute()方法。transaction的addCallback()在ActivityStackSupervisor#realStartActivityLocked()方法中有调用，传入的对象是
+LaunchActivityItem -> LaunchActivityItem#execute() ->
 ClientTransactionHandler#handleLaunchActivity(): 这是个抽象方法，由子类实现，即ActivityThread ->
 ActivityThread#handleLaunchActivity() ->
 ActivityThread#performLaunchActivity():最终在这里完成activity的启动。
@@ -462,7 +463,18 @@ ActivityThread#performLaunchActivity():最终在这里完成activity的启动。
           }
       }
     
-      // 这里有个创建Window的步骤，提供给activity依附。具体代码省略
+      // 这里有个创建Window的步骤，提供给activity依附。涉及到View的知识
+       Window window = null;
+                if (r.mPendingRemoveWindow != null && r.mPreserveWindow) {
+                    window = r.mPendingRemoveWindow;
+                    r.mPendingRemoveWindow = null;
+                    r.mPendingRemoveWindowManager = null;
+                }
+                appContext.setOuterContext(activity);
+                activity.attach(appContext, this, getInstrumentation(), r.token,
+                        r.ident, app, r.intent, r.activityInfo, title, r.parent,
+                        r.embeddedID, r.lastNonConfigurationInstances, config,
+                        r.referrer, r.voiceInteractor, window, r.configCallback);
  
       try { // 获取Application
             Application app = r.packageInfo.makeApplication(false, mInstrumentation);
@@ -616,12 +628,79 @@ Instrumentation的对象实例，这个完整方法为：
 在Application创建出来后，执行了它的onCreate()方法。
 
 ##### Handle消息机制
-
-
+详情见Handler部分，以及相关问题。
 
 ##### Binder了解
-《binder》 https://blog.csdn.net/universus/article/details/6211589
+见<TestLink>项目下的《binder》部分，以及blog: https://blog.csdn.net/universus/article/details/6211589
 
 ##### View的绘制流程与自定义view手法
+从源码开始到view有以下几个点：
+* Window、WindowManager和WMS(WindowManagerService)
+* view的绘制
 
+
+##### Window
+Window是一个抽象类，具体的实现类为 PhoneWindow。在跟踪ActivityThread启动activity的时候有一个点说到了window，就是在
+ActivityThread#performLaunchActivity()，看到这段代码：
+```
+   Window window = null;
+   if (r.mPendingRemoveWindow != null && r.mPreserveWindow) {
+       window = r.mPendingRemoveWindow;
+       r.mPendingRemoveWindow = null;
+       r.mPendingRemoveWindowManager = null;
+   }
+   appContext.setOuterContext(activity);
+   activity.attach(appContext, this, getInstrumentation(), r.token,
+           r.ident, app, r.intent, r.activityInfo, title, r.parent,
+           r.embeddedID, r.lastNonConfigurationInstances, config,
+           r.referrer, r.voiceInteractor, window, r.configCallback);
+```
+跟踪到Activity#attach()
+```
+    @UnsupportedAppUsage
+    final void attach(...){
+    
+    // ...省略代码
+    
+    mWindow = new PhoneWindow(this, window, activityConfigCallback); // 创建PhoneWindow的实例
+    mWindow.setWindowControllerCallback(mWindowControllerCallback);
+    mWindow.setCallback(this);
+    mWindow.setOnWindowDismissedCallback(this);
+    mWindow.getLayoutInflater().setPrivateFactory(this);
+    
+    //...省略代码
+    
+    mWindow.setWindowManager((WindowManager)context.getSystemService(Context.WINDOW_SERVICE),
+                mToken, mComponent.flattenToString(),
+                (info.flags & ActivityInfo.FLAG_HARDWARE_ACCELERATED) != 0);
+    if (mParent != null) {
+         mWindow.setContainer(mParent.getWindow());
+    }
+    mWindowManager = mWindow.getWindowManager(); // 是WindowManagerImpl的实例
+    mCurrentConfig = config;
+    mWindow.setColorMode(info.colorMode);
+    mWindow.setPreferMinimalPostProcessing((info.flags & ActivityInfo.FLAG_PREFER_MINIMAL_POST_PROCESSING) != 0);
+    }
+```
+看到`mWindow.setWindowManager()`
+```
+  public void setWindowManager(WindowManager wm, IBinder appToken, String appName,
+         boolean hardwareAccelerated) {
+        mAppToken = appToken;
+        mAppName = appName;
+        mHardwareAccelerated = hardwareAccelerated;
+        if (wm == null) {
+            wm = (WindowManager)mContext.getSystemService(Context.WINDOW_SERVICE);
+        }
+        mWindowManager = ((WindowManagerImpl)wm).createLocalWindowManager(this);
+  }
+    
+    
+  public WindowManagerImpl createLocalWindowManager(Window parentWindow) {
+      return new WindowManagerImpl(mContext, parentWindow);
+  }
+```
+attach()方法实际还是做初始化的事情，mWindow是PhoneWindow实例，mWindowManager是WindowManagerImpl实例。   
+在onCreate阶段，window做了一些准备工作，当界面开始与用户交互时，看下window做了什么。用户开始能交互在onResume(),而在ActivityThread中对应的是
+handleResumeActivity()。
 

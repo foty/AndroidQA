@@ -70,10 +70,10 @@ public Handler(@NonNull Looper looper, @Nullable Callback callback, boolean asyn
 }
 ```
 无参构造最终走向是2个参数的构造方法，这里也是选取2个参数的方法跟踪流程。  
-创建Handler实例时获取了Looper对象。跟踪进去会发现`Looper#myLooper()`方法Looper实例是从ThreadLocal中获取的。而设置Looper可以追溯到ActivityThread的启动。
-我们知道在执行ActivityThread#main()的时候就有调用`Looper.prepareMainLooper();`,这里就在ActivityThread所在的线程设置给了Looper再将这个Looper设置
-给了ThreadLocal。这也是ActivityThread所在的现在就称之为主线的原因之一。所以当我们在Activity中创建的Handler，发送的消息时，都是运行在这条线程上的。并且可以
-直接使用，不需要再做其他的操作，在Activity创建运行时，主线程的Looper就已经一直在运行了。接着看到`Looper.loop()`,看到这个方法：
+创建Handler实例时获取了Looper对象。跟踪进去发现`Looper#myLooper()`方法Looper实例是从ThreadLocal中获取的。而设置Looper可以追溯到ActivityThread的启动
+。我们知道在执行ActivityThread#main()的时候就有调用`Looper.prepareMainLooper();`,这里就在ActivityThread所在的线程设置给了Looper再将这个Looper设
+置给了ThreadLocal。这也是ActivityThread所在的现在就称之为主线的原因之一。所以当我们在Activity中创建的Handler，发送的消息时，都是运行在这条线程上的。并且
+可以直接使用，不需要再做其他的操作，在Activity创建运行时，主线程的Looper就已经一直在运行了。接着看到`Looper.loop()`,看到这个方法：
 ```
     public static void loop() {
         final Looper me = myLooper();  //1 
@@ -299,24 +299,21 @@ epoll机制是一种高效的IO多路复用机制，当线程空闲时，它会�
 
 * 6、非UI线程真的不能操作 View 吗?
 > 可以。准确来讲操作View其实并不是限定UI线程，而是源线程。就是创建View所在的线程与操作View的线程是不是同一个。如果在子线程创建View，那在这个子线程操作这
-个View
-是完全可以的。
+个View是完全可以的。
 
 * 7、一个线程有几个looper，几个handler，如果你说一个，他会问，如何保证looper唯一?     
-> 1个，多个Handler。通过ThreadLocal保证looper唯一。1、ThreadLocal的特性是当某线程使用ThreadLocal存储数据后，只有在该线程可以读取到存储的数据(谁保存谁访
-问)。ThreadLocal内部会基于当前线程维护一个ThreadLocalMap(定制的哈希映射表)。表中实体对象以ThreadLocal为key，Looper为value保存。2、并且保存Looper方
-法只能
-被调用一次。
+> 1个，多个Handler。通过ThreadLocal保证looper唯一。1、ThreadLocal的特性是当某线程使用ThreadLocal存储数据后，只有在该线程可以读取到存储的数据(谁保存谁
+访问)。ThreadLocal内部会基于当前线程维护一个ThreadLocalMap(定制的哈希映射表)。表中实体对象以ThreadLocal为key，Looper为value保存。2、并且保存Looper方
+法只能被调用一次。
 
 * 8、我们能在主线程直接new无参handler吗?
 > 可以，主线程的Looper在ActivityThread初始化的时候就被初始化了。
 
-* 9、主线程是一直处于死循环状态，那么android中其他组件，比如activity的生命周期等式如何在主线程执行的？  
+* 9、主线程是一直处于死循环状态，那么android中其他组件，比如activity的生命周期等是如何在主线程执行的？  
 > 通过binder+Handler发送消息到主线程，再根据消息分发到Handler处理。在ActivityThread中的Looper进入循环之前有个`attach()`的方法。这里会建立起一个本地与
 服务端的Binder通信，对应的服务端就是ApplicationThread。ApplicationThread呢又会发起与AMS的binder通信。AMS就是应用进程的生命周期等的实际管理者。最终就
 是AMS处理完流程后通过Binder与ApplicationThread通信，ApplicationThread通过Handler发送消息到MessageQueue中。MessageQueue有了消息便不在阻塞，将消
-息分发到对应的
-Handler处理，这些消息就包括activity的生命周期等。
+息分发到对应的Handler处理，这些消息就包括activity的生命周期等。
   
 * 10、为什么主线程不用调用looper.prepare()和looper.looper()?
 > 因为主线程的Looper已经在ActivityThread初始化的时候就调用了这2个方法。
@@ -336,7 +333,7 @@ Handler处理，这些消息就包括activity的生命周期等。
 主线程的Looper退出了循环，那么代表着这个应用也退出了。而且应用活动不仅仅是只靠一条主线程，还有其他线程共同作用。比如binder线程。当其他线程发送消息进入到主线
 程消息队列，也会通过Looper分发到对应的Handler处理。
 
-* 14、如果我们的子线程(创建Handler)没有消息处理的情况下，我们如何优化looper
+* 14、如果我们的子线程(创建Handler)没有消息处理的情况下，我们如何优化looper？
 > 如果子线程是长期的，可以参考主线程Looper，让其阻塞，需要时在唤醒。如果是短期的，可以直接调用Looper#quit()退出，释放内存，结束线程。
 
 * 15、ThreadLocal的原理，以及在Looper是如何应用的？
