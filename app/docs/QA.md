@@ -703,4 +703,44 @@ ActivityThread#performLaunchActivity()，看到这段代码：
 attach()方法实际还是做初始化的事情，mWindow是PhoneWindow实例，mWindowManager是WindowManagerImpl实例。   
 在onCreate阶段，window做了一些准备工作，当界面开始与用户交互时，看下window做了什么。用户开始能交互在onResume(),而在ActivityThread中对应的是
 handleResumeActivity()。
-
+```
+public void handleResumeActivity( ... ){
+  // ...省略代码
+  if (r.window == null && !a.mFinished && willBeVisible) {
+    r.window = r.activity.getWindow();
+    View decor = r.window.getDecorView();
+    decor.setVisibility(View.INVISIBLE);
+    ViewManager wm = a.getWindowManager();
+    WindowManager.LayoutParams l = r.window.getAttributes();
+    a.mDecor = decor;
+    l.type = WindowManager.LayoutParams.TYPE_BASE_APPLICATION;
+    l.softInputMode |= forwardBit;
+    if (r.mPreserveWindow) {
+        a.mWindowAdded = true;
+        r.mPreserveWindow = false;
+        // Normally the ViewRoot sets up callbacks with the Activity
+        // in addView->ViewRootImpl#setView. If we are instead reusing
+        // the decor view we have to notify the view root that the
+        // callbacks may have changed.
+        ViewRootImpl impl = decor.getViewRootImpl();
+        if (impl != null) {
+            impl.notifyChildRebuilt();
+        }
+    }
+    if (a.mVisibleFromClient) {
+        if (!a.mWindowAdded) {
+            a.mWindowAdded = true;
+            wm.addView(decor, l);
+        } else {
+            // The activity will get a callback for this {@link LayoutParams} change
+            // earlier. However, at that time the decor will not be set (this is set
+            // in this method), so no action will be taken. This call ensures the
+            // callback occurs with the decor set.
+            a.onWindowAttributesChanged(l);
+        }
+    }
+    
+    // ...省略代码
+    
+}
+```

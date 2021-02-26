@@ -128,10 +128,10 @@ Message next() {
             } else {
                 // Got a message.
                 mBlocked = false;
-                if (prevMsg != null) {
+                if (prevMsg != null) { //如果是同步屏障，prevMsg就会被赋值，mMessages不会被改变，导致屏障一直存在，除非手动取消。
                     prevMsg.next = msg.next;
                 } else {
-                    mMessages = msg.next;
+                    mMessages = msg.next; //没有屏障，直接取队列下一个元素。
                 }
                 msg.next = null;
                 if (DEBUG) Log.v(TAG, "Returning message: " + msg);
@@ -374,7 +374,7 @@ dispatchMessage的时候回调message.callback.run()。其他没有特别的地�
 * 24、同步屏障问题  
 > Handler消息分为同步消息、异步消息。发送异步消息只需要在创建Handler实例时，传递一个为值true的async参数。或者使用`msg.setAsynchronous(true)`。同步屏
 障就是阻碍队列中同步消息的屏障，让异步消息优先执行。设置同步屏障，其实就是发送一个target == null的msg，进入到队列。当检测到这是一个同步屏障(消息)后，
-MessageQueue就会寻找此后队列中的第一个异步消息处理，忽略掉队列中的同步消息。如果队列一直不存在异步消息，那么线程进入阻塞状态。    
+MessageQueue就会寻找此后队列中的异步消息处理，忽略掉队列中的同步消息。如果队列一直不存在异步消息，那么线程进入阻塞状态。    
 应用之一就是在ViewRootImpl：我们知道屏幕大概每16ms要刷新一次，如果前面有大量消息，要等到消息都处理完了才去刷新屏幕，那么屏幕要卡住很久，这显然不是用户需要的
 结果。这时同步屏障就派上用场了。  
 移除同步屏障方法： removeSyncBarrier()
