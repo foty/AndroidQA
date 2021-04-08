@@ -639,9 +639,8 @@ Instrumentation的对象实例，这个完整方法为：
 * view的绘制
 
 
-##### Window
-Window是一个抽象类，具体的实现类为 PhoneWindow。在跟踪ActivityThread启动activity的时候有一个点说到了window，就是在
-ActivityThread#performLaunchActivity()，看到这段代码：
+##### Window、PhoneWindow、DecorView
+在跟踪ActivityThread启动activity最后阶段的时候就有提到过window，就是在ActivityThread#performLaunchActivity()，看到这段代码：
 ```
    Window window = null;
    if (r.mPendingRemoveWindow != null && r.mPreserveWindow) {
@@ -655,7 +654,7 @@ ActivityThread#performLaunchActivity()，看到这段代码：
            r.embeddedID, r.lastNonConfigurationInstances, config,
            r.referrer, r.voiceInteractor, window, r.configCallback);
 ```
-跟踪到Activity#attach()
+跟踪到Activity#attach()：
 ```
     @UnsupportedAppUsage
     final void attach(...){
@@ -670,7 +669,7 @@ ActivityThread#performLaunchActivity()，看到这段代码：
     
     //...省略代码
     
-    mWindow.setWindowManager((WindowManager)context.getSystemService(Context.WINDOW_SERVICE),
+    mWindow.setWindowManager((WindowManager)context.getSystemService(Context.WINDOW_SERVICE),  // 关联WindowManager
                 mToken, mComponent.flattenToString(),
                 (info.flags & ActivityInfo.FLAG_HARDWARE_ACCELERATED) != 0);
     if (mParent != null) {
@@ -700,9 +699,147 @@ ActivityThread#performLaunchActivity()，看到这段代码：
       return new WindowManagerImpl(mContext, parentWindow);
   }
 ```
-attach()方法实际还是做初始化的事情，mWindow是PhoneWindow实例，mWindowManager是WindowManagerImpl实例。   
-在onCreate阶段，window做了一些准备工作，当界面开始与用户交互时，看下window做了什么。用户开始能交互在onResume(),而在ActivityThread中对应的是
-handleResumeActivity()。
+attach()方法实际还是做初始化的事情，mWindow是PhoneWindow实例(Window本身是一个抽象类)，mWindowManager是WindowManager对象，但WindowManager是
+一个接口，初始化由它的子类WindowManagerImpl完成。   
+performLaunchActivity()之后会进入到Activity生命周期，体现就是Activity#onCreate()方法。设置布局的入口在`setContentView(R.layout.activity_main);`:
+看下setContentView():
+```
+  @Override
+    public void setContentView(@LayoutRes int layoutResID) {
+        getDelegate().setContentView(layoutResID);
+  }
+```
+这里看的源代码是android 11，对应api版本是30。不同版本的api实现可能有些不一样。`setContentView()`这里使用了委托，委托给AppCompatDelegate，AppCompatDelegate
+是一个抽象类，实现在AppCompatDelegateImpl。看到这个类的`setContentView`:
+```
+    public void setContentView(int resId) {
+        ensureSubDecor();
+        ViewGroup contentParent = (ViewGroup) mSubDecor.findViewById(android.R.id.content);
+        contentParent.removeAllViews();
+        LayoutInflater.from(mContext).inflate(resId, contentParent);
+        mOriginalWindowCallback.onContentChanged();
+    }
+```
+在AppCompatDelegateImpl#ensureSubDecor()：
+```
+    private void ensureSubDecor() {
+        if (!mSubDecorInstalled) {
+            mSubDecor = createSubDecor();
+            // If a title was set before we installed the decor, propagate it now
+            CharSequence title = getTitle();
+            if (!TextUtils.isEmpty(title)) {
+                if (mDecorContentParent != null) {
+                    mDecorContentParent.setWindowTitle(title);
+                } else if (peekSupportActionBar() != null) {
+                    peekSupportActionBar().setWindowTitle(title);
+                } else if (mTitleView != null) {
+                    mTitleView.setText(title);
+                }
+            }
+            applyFixedSizeWindow();
+            onSubDecorInstalled(mSubDecor);
+            mSubDecorInstalled = true;
+            // Invalidate if the panel menu hasn't been created before this.
+            // Panel menu invalidation is deferred avoiding application onCreateOptionsMenu
+            // being called in the middle of onCreate or similar.
+            // A pending invalidation will typically be resolved before the posted message
+            // would run normally in order to satisfy instance state restoration.
+            PanelFeatureState st = getPanelState(FEATURE_OPTIONS_PANEL, false);
+            if (!mIsDestroyed && (st == null || st.menu == null)) {
+                invalidatePanelMenu(FEATURE_SUPPORT_ACTION_BAR);
+            }
+        }
+    }
+```
+mSubDecor是ViewGroup实例。猜测是容纳传入View的容器，但是不是Window还不能确定。跟踪`createSubDecor()`,方法略长，只挑选些关键部分，省略部分代码以
+及注释，log等：   
+```
+    private ViewGroup createSubDecor() {
+       
+        // 省略代码：主要就是通过TypedArray，获取主题样式。比如ActionBar，windowNoTitle等设置
+
+        mWindow.getDecorView();  // 获取DecorView。
+        final LayoutInflater inflater = LayoutInflater.from(mContext);
+        ViewGroup subDecor = null;
+        if (!mWindowNoTitle) { // 如果有标题栏
+            if (mIsFloating) { // 悬浮模式              
+                subDecor = (ViewGroup) inflater.inflate(R.layout.abc_dialog_title_material, null);
+                mHasActionBar = mOverlayActionBar = false;
+                
+            } else if (mHasActionBar) { // 有ActionBar              
+                TypedValue outValue = new TypedValue();
+                mContext.getTheme().resolveAttribute(R.attr.actionBarTheme, outValue, true);
+                Context themedContext;
+                if (outValue.resourceId != 0) {
+                    themedContext = new ContextThemeWrapper(mContext, outValue.resourceId);
+                } else {
+                    themedContext = mContext;
+                }
+                subDecor = (ViewGroup) LayoutInflater.from(themedContext).inflate(R.layout.abc_screen_toolbar, null);
+                mDecorContentParent = (DecorContentParent) subDecor.findViewById(R.id.decor_content_parent);
+                mDecorContentParent.setWindowCallback(getWindowCallback());
+
+                // 设置样式到mDecorContentParent，如进度条，ActionBar等等
+            }
+        } else {
+            if (mOverlayActionMode) {
+                subDecor = (ViewGroup) inflater.inflate(R.layout.abc_screen_simple_overlay_action_mode, null);
+            } else {
+                subDecor = (ViewGroup) inflater.inflate(R.layout.abc_screen_simple, null);
+            }
+            
+            // 省略代码：设置应用window的监听器(主要用于布局展示View)，有版本方法限制，分水岭版本号为21。                  
+        }
+
+        if (mDecorContentParent == null) {
+            mTitleView = (TextView) subDecor.findViewById(R.id.title);
+        }
+
+        // Make the decor optionally fit system windows, like the window's decor(适应系统窗口)
+        ViewUtils.makeOptionalFitsSystemWindows(subDecor);
+
+        final ContentFrameLayout contentView = (ContentFrameLayout) subDecor.findViewById(
+                R.id.action_bar_activity_content);
+
+        final ViewGroup windowContentView = (ViewGroup) mWindow.findViewById(android.R.id.content);
+        if (windowContentView != null) {
+            // There might be Views already added to the Window's content view so we need to
+            // migrate them to our content view
+            while (windowContentView.getChildCount() > 0) {
+                final View child = windowContentView.getChildAt(0);
+                windowContentView.removeViewAt(0);
+                contentView.addView(child);
+            }
+
+            // Change our content FrameLayout to use the android.R.id.content id.
+            // Useful for fragments.
+            windowContentView.setId(View.NO_ID);
+            contentView.setId(android.R.id.content);
+
+            // The decorContent may have a foreground drawable set (windowContentOverlay).
+            // Remove this as we handle it ourselves
+            if (windowContentView instanceof FrameLayout) {
+                ((FrameLayout) windowContentView).setForeground(null);
+            }
+        }
+
+        // Now set the Window's content view with the decor
+        mWindow.setContentView(subDecor);
+
+        contentView.setAttachListener(new ContentFrameLayout.OnAttachListener() {
+            @Override
+            public void onAttachedFromWindow() {}
+
+            @Override
+            public void onDetachedFromWindow() {
+                dismissPopups();
+            }
+        });
+        return subDecor;
+    }
+```
+
+用户开始能交互在onResume(),而在ActivityThread中对应的是handleResumeActivity()。
 ```
 public void handleResumeActivity( ... ){
   // ...省略代码
@@ -743,4 +880,13 @@ public void handleResumeActivity( ... ){
     // ...省略代码
     
 }
+```
+
+```
+D: parent= androidx.appcompat.widget.ContentFrameLayout{2d62ef0 V.E.....I. 0,0-0,0 #1020002 android:id/content}
+D: parent= androidx.appcompat.widget.ActionBarOverlayLayout{351f4c69 V.E.....I. 0,0-0,0 #7f070030 app:id/decor_content_parent}
+D: parent= android.widget.FrameLayout{29d1b6ee V.E..... ......I. 0,0-0,0}
+D: parent= android.widget.LinearLayout{1e1b978f V.E..... ......I. 0,0-0,0}
+D: parent= com.android.internal.policy.impl.PhoneWindow$DecorView{1874a1c V.E..... R.....ID 0,0-0,0}
+D: parent= null
 ```

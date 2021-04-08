@@ -12,6 +12,9 @@ import android.os.Message;
 import android.os.MessageQueue;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewParent;
+import android.widget.TextView;
 
 import java.lang.reflect.Method;
 
@@ -33,6 +36,19 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
+       View view =  findViewById(R.id.tvHello);
+
+       while (view != null) {
+           view = (View) view.getParent();
+          Log.d("lxx", "parent= "+ view);
+       }
+
+
+        //testHandler(handler);
+
+    }
+
+    private void testHandler(Handler handler) {
         Message msg = new Message();
         msg.obj = 100;
         handler.sendMessage(msg);
@@ -90,7 +106,6 @@ public class MainActivity extends AppCompatActivity {
 
         //开启同步屏障 这个方法标注为 hide。
         // handler.getLooper().getQueue().postSyncBarrier();
-
     }
 
     int token;
