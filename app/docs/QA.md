@@ -692,16 +692,14 @@ Instrumentation的对象实例，这个完整方法为：
             wm = (WindowManager)mContext.getSystemService(Context.WINDOW_SERVICE);
         }
         mWindowManager = ((WindowManagerImpl)wm).createLocalWindowManager(this);
-  }
-    
-    
+  }    
   public WindowManagerImpl createLocalWindowManager(Window parentWindow) {
       return new WindowManagerImpl(mContext, parentWindow);
   }
 ```
 attach()方法实际还是做初始化的事情，mWindow是PhoneWindow实例(Window本身是一个抽象类)，mWindowManager是WindowManager对象，但WindowManager是
 一个接口，初始化由它的子类WindowManagerImpl完成。   
-performLaunchActivity()之后会进入到Activity生命周期，体现就是Activity#onCreate()方法。设置布局的入口在`setContentView(R.layout.activity_main);`:
+performLaunchActivity()之后会进入到Activity生命周期，体现就是走Activity#onCreate()方法。设置布局的入口在`setContentView(R.layout.activity_main);`:
 看下setContentView():
 ```
   @Override
@@ -720,11 +718,11 @@ performLaunchActivity()之后会进入到Activity生命周期，体现就是Acti
         mOriginalWindowCallback.onContentChanged();
     }
 ```
-在AppCompatDelegateImpl#ensureSubDecor()：
+看到AppCompatDelegateImpl#ensureSubDecor()：
 ```
     private void ensureSubDecor() {
         if (!mSubDecorInstalled) {
-            mSubDecor = createSubDecor();
+            mSubDecor = createSubDecor(); // 创建mSubDecor,确保mSubDecor不是null
             // If a title was set before we installed the decor, propagate it now
             CharSequence title = getTitle();
             if (!TextUtils.isEmpty(title)) {
@@ -756,9 +754,9 @@ mSubDecor是ViewGroup实例。猜测是容纳传入View的容器，但是不是W
 ```
     private ViewGroup createSubDecor() {
        
-        // 省略代码：主要就是通过TypedArray，获取主题样式。比如ActionBar，windowNoTitle等设置
+        // 省略代码。。。主要就是通过TypedArray获取主题样式。比如ActionBar，windowNoTitle等设置
 
-        mWindow.getDecorView();  // 获取DecorView。
+        mWindow.getDecorView();  // 获取DecorView。DecorView继承至FrameLayout，也是一个容器来的
         final LayoutInflater inflater = LayoutInflater.from(mContext);
         ViewGroup subDecor = null;
         if (!mWindowNoTitle) { // 如果有标题栏
@@ -788,33 +786,32 @@ mSubDecor是ViewGroup实例。猜测是容纳传入View的容器，但是不是W
                 subDecor = (ViewGroup) inflater.inflate(R.layout.abc_screen_simple, null);
             }
             
-            // 省略代码：设置应用window的监听器(主要用于布局展示View)，有版本方法限制，分水岭版本号为21。                  
+            // (。。。。省略代码) 设置应用window的监听器(主要用于布局展示View)，有版本方法限制，分水岭版本号为21。                  
         }
 
-        if (mDecorContentParent == null) {
+        if (mDecorContentParent == null) {  // 找到title
             mTitleView = (TextView) subDecor.findViewById(R.id.title);
         }
 
         // Make the decor optionally fit system windows, like the window's decor(适应系统窗口)
         ViewUtils.makeOptionalFitsSystemWindows(subDecor);
-
+        
         final ContentFrameLayout contentView = (ContentFrameLayout) subDecor.findViewById(
-                R.id.action_bar_activity_content);
-
-        final ViewGroup windowContentView = (ViewGroup) mWindow.findViewById(android.R.id.content);
+                R.id.action_bar_activity_content);               
+        final ViewGroup windowContentView = (ViewGroup) mWindow.findViewById(android.R.id.content); //
         if (windowContentView != null) {
+            // 如果已经有view容器添加到decorView，要把这些内容迁移到新的容器中
             // There might be Views already added to the Window's content view so we need to
-            // migrate them to our content view
+            // migrate them to our content view         
             while (windowContentView.getChildCount() > 0) {
                 final View child = windowContentView.getChildAt(0);
                 windowContentView.removeViewAt(0);
                 contentView.addView(child);
             }
-
             // Change our content FrameLayout to use the android.R.id.content id.
             // Useful for fragments.
             windowContentView.setId(View.NO_ID);
-            contentView.setId(android.R.id.content);
+            contentView.setId(android.R.id.content); //将新的容器id设置为R.id.content。
 
             // The decorContent may have a foreground drawable set (windowContentOverlay).
             // Remove this as we handle it ourselves
@@ -822,14 +819,12 @@ mSubDecor是ViewGroup实例。猜测是容纳传入View的容器，但是不是W
                 ((FrameLayout) windowContentView).setForeground(null);
             }
         }
-
         // Now set the Window's content view with the decor
-        mWindow.setContentView(subDecor);
+        mWindow.setContentView(subDecor);  //  将新的容器设置到window。
 
         contentView.setAttachListener(new ContentFrameLayout.OnAttachListener() {
             @Override
             public void onAttachedFromWindow() {}
-
             @Override
             public void onDetachedFromWindow() {
                 dismissPopups();
@@ -838,6 +833,72 @@ mSubDecor是ViewGroup实例。猜测是容纳传入View的容器，但是不是W
         return subDecor;
     }
 ```
+看到摘选代码中的`mWindow.getDecorView();`，前面说过Window的实现是在PhoneWindow,所以要在PhoneWindow类找getDecorView()。经过方法调用，最终来到
+PhoneWindow的`installDecor()`。
+```
+    private void installDecor() {
+        mForceDecorInstall = false;
+        if (mDecor == null) {
+            mDecor = generateDecor(-1);
+            mDecor.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+            mDecor.setIsRootNamespace(true);
+            if (!mInvalidatePanelMenuPosted && mInvalidatePanelMenuFeatures != 0) {
+                mDecor.postOnAnimation(mInvalidatePanelMenuRunnable);
+            }
+        } else {
+            mDecor.setWindow(this);
+        }
+        if (mContentParent == null) {
+            mContentParent = generateLayout(mDecor);            
+             // 。。。省略一些样式默认设置代码
+         }
+    }
+```
+installDecor()保证了mDecor不会为null，并且设置一些系统相关样式属性参数。`generateDecor(-1);`方法主要是先获取Context。是使用，然后new出DecorView对象。另外
+`generateLayout(mDecor)`这里有一点要注意：
+```
+protected ViewGroup generateLayout(DecorView decor){
+ // 省略代码。。。
+ ViewGroup contentParent = (ViewGroup)findViewById(ID_ANDROID_CONTENT);
+ if (contentParent == null) {
+    throw new RuntimeException("Window couldn't find content container view");
+ }
+ // 省略代码。。。
+ return contentParent;
+ }
+```
+返回的是从decor中找到id为ID_ANDROID_CONTENT的一个View。ID_ANDROID_CONTENT还有另外一个身份就是com.android.internal.R.id.content。这个后面会用到。   
+回到`createSubDecor()`。mWindow.getDecorView()执行完毕。继续往下执行。整个方法后面一部分核心还是inflate出一个View作为新的window容器，也就是subDecor。到
+后面`final ViewGroup windowContentView = (ViewGroup) mWindow.findViewById(android.R.id.content);` ，这里找到id为R.id.content的View，如果找到
+并且它原来有其他子view，要把这些内容迁移到新的容器(contentView)。contentView是subDecor的第一个子view，是一个ContentFrameLayout。随后将contentView的id
+设置为android.R.id.content。最后将新的容器设置给Window(`mWindow.setContentView(subDecor);`)，PhoneWindow#setContentView(),最终或调用下面方法：
+```
+    public void setContentView(View view, ViewGroup.LayoutParams params) {
+        if (mContentParent == null) {
+            installDecor();
+        } else if (!hasFeature(FEATURE_CONTENT_TRANSITIONS)) {
+            mContentParent.removeAllViews();
+        }
+
+        if (hasFeature(FEATURE_CONTENT_TRANSITIONS)) {
+            view.setLayoutParams(params);
+            final Scene newScene = new Scene(mContentParent, view);
+            transitionTo(newScene);
+        } else {
+            mContentParent.addView(view, params);
+        }
+        mContentParent.requestApplyInsets();
+        final Callback cb = getCallback();
+        if (cb != null && !isDestroyed()) {
+            cb.onContentChanged();
+        }
+        mContentParentExplicitlySet = true;
+    }
+```
+
+
+
+
 
 用户开始能交互在onResume(),而在ActivityThread中对应的是handleResumeActivity()。
 ```
