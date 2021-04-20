@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
         };
 
        View view =  findViewById(R.id.tvHello);
-
+       Log.d("lxx", "view= "+ view);
        while (view != null) {
            view = (View) view.getParent();
           Log.d("lxx", "parent= "+ view);

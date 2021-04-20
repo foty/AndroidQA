@@ -727,7 +727,7 @@ performLaunchActivity()之后会进入到Activity生命周期，体现就是走A
             CharSequence title = getTitle();
             if (!TextUtils.isEmpty(title)) {
                 if (mDecorContentParent != null) {
-                    mDecorContentParent.setWindowTitle(title);
+                    mDecorContentParent.setWindowTitle(title);  // 标题
                 } else if (peekSupportActionBar() != null) {
                     peekSupportActionBar().setWindowTitle(title);
                 } else if (mTitleView != null) {
@@ -737,11 +737,7 @@ performLaunchActivity()之后会进入到Activity生命周期，体现就是走A
             applyFixedSizeWindow();
             onSubDecorInstalled(mSubDecor);
             mSubDecorInstalled = true;
-            // Invalidate if the panel menu hasn't been created before this.
-            // Panel menu invalidation is deferred avoiding application onCreateOptionsMenu
-            // being called in the middle of onCreate or similar.
-            // A pending invalidation will typically be resolved before the posted message
-            // would run normally in order to satisfy instance state restoration.
+           
             PanelFeatureState st = getPanelState(FEATURE_OPTIONS_PANEL, false);
             if (!mIsDestroyed && (st == null || st.menu == null)) {
                 invalidatePanelMenu(FEATURE_SUPPORT_ACTION_BAR);
@@ -785,14 +781,11 @@ mSubDecor是ViewGroup实例。猜测是容纳传入View的容器，但是不是W
             } else {
                 subDecor = (ViewGroup) inflater.inflate(R.layout.abc_screen_simple, null);
             }
-            
             // (。。。。省略代码) 设置应用window的监听器(主要用于布局展示View)，有版本方法限制，分水岭版本号为21。                  
         }
-
         if (mDecorContentParent == null) {  // 找到title
             mTitleView = (TextView) subDecor.findViewById(R.id.title);
         }
-
         // Make the decor optionally fit system windows, like the window's decor(适应系统窗口)
         ViewUtils.makeOptionalFitsSystemWindows(subDecor);
         
@@ -858,7 +851,12 @@ installDecor()保证了mDecor不会为null，并且设置一些系统相关样�
 `generateLayout(mDecor)`这里有一点要注意：
 ```
 protected ViewGroup generateLayout(DecorView decor){
- // 省略代码。。。
+ // 省略前面代码。。。
+ 
+ // 此前一部分是Inflate decor逻辑。其实就是Inflate layoutResource。layoutResource为系统xml文件，这个文件有一个id为content的FrameLayout
+ // 这也是后面可以直接findViewById(ID_ANDROID_CONTENT)的原因。
+ mDecor.startChanging();
+ mDecor.onResourcesLoaded(mLayoutInflater, layoutResource);
  ViewGroup contentParent = (ViewGroup)findViewById(ID_ANDROID_CONTENT);
  if (contentParent == null) {
     throw new RuntimeException("Window couldn't find content container view");
@@ -869,9 +867,12 @@ protected ViewGroup generateLayout(DecorView decor){
 ```
 返回的是从decor中找到id为ID_ANDROID_CONTENT的一个View。ID_ANDROID_CONTENT还有另外一个身份就是com.android.internal.R.id.content。这个后面会用到。   
 回到`createSubDecor()`。mWindow.getDecorView()执行完毕。继续往下执行。整个方法后面一部分核心还是inflate出一个View作为新的window容器，也就是subDecor。到
-后面`final ViewGroup windowContentView = (ViewGroup) mWindow.findViewById(android.R.id.content);` ，这里找到id为R.id.content的View，如果找到
-并且它原来有其他子view，要把这些内容迁移到新的容器(contentView)。contentView是subDecor的第一个子view，是一个ContentFrameLayout。随后将contentView的id
-设置为android.R.id.content。最后将新的容器设置给Window(`mWindow.setContentView(subDecor);`)，PhoneWindow#setContentView(),最终或调用下面方法：
+后面
+>final ViewGroup windowContentView = (ViewGroup) mWindow.findViewById(android.R.id.content);
+
+这里找到id为R.id.content的View，如果能找到并且它原来有其他的子view，要把这些内容迁移到新的容器(contentView)。contentView是subDecor的第一个子view，
+是一个ContentFrameLayout。随后将contentView的id设置为android.R.id.content。最后将新的容器设置给Window(`mWindow.setContentView(subDecor);`)，
+PhoneWindow#setContentView(),最终或调用下面方法：
 ```
     public void setContentView(View view, ViewGroup.LayoutParams params) {
         if (mContentParent == null) {
@@ -895,59 +896,91 @@ protected ViewGroup generateLayout(DecorView decor){
         mContentParentExplicitlySet = true;
     }
 ```
-
-
-
-
-
-用户开始能交互在onResume(),而在ActivityThread中对应的是handleResumeActivity()。
+前面第一个if else中`installDecor()`前面已经有看过，下面看到`FEATURE_CONTENT_TRANSITIONS`这个flag，大概翻译就是内容过渡标志。我的理解是类似activity的转场
+动画。带有这个标志是内容中的某个控件或元素支持过渡动画。如果需要内容过渡则通过Scene添加view，否则直接添加view到mContentParent。在Scene也可以看到：
 ```
-public void handleResumeActivity( ... ){
-  // ...省略代码
-  if (r.window == null && !a.mFinished && willBeVisible) {
-    r.window = r.activity.getWindow();
-    View decor = r.window.getDecorView();
-    decor.setVisibility(View.INVISIBLE);
-    ViewManager wm = a.getWindowManager();
-    WindowManager.LayoutParams l = r.window.getAttributes();
-    a.mDecor = decor;
-    l.type = WindowManager.LayoutParams.TYPE_BASE_APPLICATION;
-    l.softInputMode |= forwardBit;
-    if (r.mPreserveWindow) {
-        a.mWindowAdded = true;
-        r.mPreserveWindow = false;
-        // Normally the ViewRoot sets up callbacks with the Activity
-        // in addView->ViewRootImpl#setView. If we are instead reusing
-        // the decor view we have to notify the view root that the
-        // callbacks may have changed.
-        ViewRootImpl impl = decor.getViewRootImpl();
-        if (impl != null) {
-            impl.notifyChildRebuilt();
-        }
+    public Scene(ViewGroup sceneRoot, View layout) {
+        mSceneRoot = sceneRoot;
+        mLayout = layout;
     }
-    if (a.mVisibleFromClient) {
-        if (!a.mWindowAdded) {
-            a.mWindowAdded = true;
-            wm.addView(decor, l);
-        } else {
-            // The activity will get a callback for this {@link LayoutParams} change
-            // earlier. However, at that time the decor will not be set (this is set
-            // in this method), so no action will be taken. This call ensures the
-            // callback occurs with the decor set.
-            a.onWindowAttributesChanged(l);
+```
+```
+    public void enter() {
+        // Apply layout change, if any
+        if (mLayoutId > 0 || mLayout != null) {
+            // empty out parent container before adding to it
+            getSceneRoot().removeAllViews();
+            if (mLayoutId > 0) {
+                LayoutInflater.from(mContext).inflate(mLayoutId, mSceneRoot);
+            } else {
+                mSceneRoot.addView(mLayout); // mSceneRoot就是mContentParent
+            }
         }
+        if (mEnterAction != null) {
+            mEnterAction.run();
+        }
+        setCurrentScene(mSceneRoot, this);
     }
-    
-    // ...省略代码
-    
-}
 ```
+最终还是会将subDecor添加到mContentParent容器中去。到此做个小结：  
+* Window 是一个抽象类，每个Activity都有一个Window，具体实现类为PhoneWindow。
+* PhoneWindow 是Window的实现类，所有具体的绘制逻辑都在这个类中，Window或者说PhoneWindow处在同一个层级上。PhoneWindow内部有一个DecorView的实例。
+* DecorView 继承FrameLayout，是所有视图的根view。它的inflate逻辑取根据系统主题样式由系统创建。它有个id为`android.R.id.content`的子View。
+* id为android.R.id.content的View(mContentParent/contentView,在不同类中有不同的名称) DecorView中的一个子view，实质也是一个FrameLayout，在构建时可能
+会被替换为ContentFrameLayout(也是继承FrameLayout)，但id不会被改变。开发中为activity设置的ContentView，就是它的子View。
 
+subDecor添加完mContentParent后，一直返回到最开始地方，也就是AppCompatDelegateImpl#setContentView()中的ensureSubDecor(),再贴一遍代码：
 ```
-D: parent= androidx.appcompat.widget.ContentFrameLayout{2d62ef0 V.E.....I. 0,0-0,0 #1020002 android:id/content}
-D: parent= androidx.appcompat.widget.ActionBarOverlayLayout{351f4c69 V.E.....I. 0,0-0,0 #7f070030 app:id/decor_content_parent}
-D: parent= android.widget.FrameLayout{29d1b6ee V.E..... ......I. 0,0-0,0}
-D: parent= android.widget.LinearLayout{1e1b978f V.E..... ......I. 0,0-0,0}
-D: parent= com.android.internal.policy.impl.PhoneWindow$DecorView{1874a1c V.E..... R.....ID 0,0-0,0}
+    public void setContentView(View v) {
+        ensureSubDecor(); // 完成了Decor的创建初始化工作
+        ViewGroup contentParent = (ViewGroup) mSubDecor.findViewById(android.R.id.content);
+        contentParent.removeAllViews();
+        contentParent.addView(v);
+        mOriginalWindowCallback.onContentChanged();
+    }
+```
+剩下逻辑就是将自己绘制的xml生成的View添加到contentParent容器中。到此Activity#setContentView(R.layout.xx)流程跟踪结束，同时对Window，PhoneWindow，
+DecorView也有一个比较清楚的认识。这里额外做一个小测试，递归打印View的父类处理：从自己的xml文件开始：
+```
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/tvHello"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hello World!"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+打印代码为
+```
+       View view =  findViewById(R.id.tvHello);
+       Log.d("TAG", "view= "+ view);
+       while (view != null) {
+           view = (View) view.getParent();
+          Log.d("TAG", "parent= "+ view);
+       }
+```
+输出结果：
+```
+D: view= androidx.appcompat.widget.AppCompatTextView{2d62ef0 V.ED.... ......ID 0,0-0,0 #7f07008d app:id/tvHello}
+D: parent= androidx.constraintlayout.widget.ConstraintLayout{351f4c69 V.E..... ......I. 0,0-0,0}
+D: parent= androidx.appcompat.widget.ContentFrameLayout{29d1b6ee V.E..... ......I. 0,0-0,0 #1020002 android:id/content}
+D: parent= androidx.appcompat.widget.ActionBarOverlayLayout{1e1b978f V.E..... ......I. 0,0-0,0 #7f070030 app:id/decor_content_parent}
+D: parent= android.widget.FrameLayout{1874a1c V.E..... ......I. 0,0-0,0}
+D: parent= android.widget.LinearLayout{cd74625 V.E..... ......I. 0,0-0,0}
+D: parent= com.android.internal.policy.impl.PhoneWindow$DecorView{34a653fa V.E..... R.....ID 0,0-0,0}
 D: parent= null
 ```
+tvHello是一个TextView，它的父布局是一个ConstraintLayout。再往上就是ContentFrameLayout，这表示DecorView中id=content的子view的是被替换过的。view的最
+根父view是DecorView。
