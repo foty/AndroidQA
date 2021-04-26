@@ -698,7 +698,7 @@ Instrumentation的对象实例，这个完整方法为：
   }
 ```
 attach()方法实际还是做初始化的事情，mWindow是PhoneWindow实例(Window本身是一个抽象类)，mWindowManager是WindowManager对象，但WindowManager是
-一个接口，初始化由它的子类WindowManagerImpl完成。   
+一个接口，最后获取的实例它的子类WindowManagerImpl。   
 performLaunchActivity()之后会进入到Activity生命周期，体现就是走Activity#onCreate()方法。设置布局的入口在`setContentView(R.layout.activity_main);`:
 看下setContentView():
 ```
@@ -983,4 +983,103 @@ D: parent= com.android.internal.policy.impl.PhoneWindow$DecorView{34a653fa V.E..
 D: parent= null
 ```
 tvHello是一个TextView，它的父布局是一个ConstraintLayout。再往上就是ContentFrameLayout，这表示DecorView中id=content的子view的是被替换过的。view的最
-根父view是DecorView。
+根父view是DecorView。  
+Activity的onCreate()方法结束，进入到onResume()。但是在这之前在ActivityThread会先执行handleResumeActivity():
+```
+ public void handleResumeActivity(IBinder token, boolean finalStateRequest, boolean isForward,
+            String reason) {
+            
+        // 省略代码。。。
+        
+        if (r.window == null && !a.mFinished && willBeVisible) {
+            r.window = r.activity.getWindow(); // window与activity关联
+            View decor = r.window.getDecorView();
+            decor.setVisibility(View.INVISIBLE);
+            ViewManager wm = a.getWindowManager();
+            WindowManager.LayoutParams l = r.window.getAttributes();
+            a.mDecor = decor;
+            l.type = WindowManager.LayoutParams.TYPE_BASE_APPLICATION;
+            l.softInputMode |= forwardBit;
+            if (r.mPreserveWindow) {
+                a.mWindowAdded = true;
+                r.mPreserveWindow = false;
+                // Normally the ViewRoot sets up callbacks with the Activity
+                // in addView->ViewRootImpl#setView. If we are instead reusing
+                // the decor view we have to notify the view root that the
+                // callbacks may have changed.
+                ViewRootImpl impl = decor.getViewRootImpl();
+                if (impl != null) {
+                    impl.notifyChildRebuilt();
+                }
+            }
+            if (a.mVisibleFromClient) {
+                if (!a.mWindowAdded) {
+                    a.mWindowAdded = true;
+                    wm.addView(decor, l); // 将decor添加到wm中。
+                } else {
+                    // The activity will get a callback for this {@link LayoutParams} change
+                    // earlier. However, at that time the decor will not be set (this is set
+                    // in this method), so no action will be taken. This call ensures the
+                    // callback occurs with the decor set.
+                    a.onWindowAttributesChanged(l);
+                }
+            }
+            // 。。。省略代码
+        }   
+ }                       
+```
+在这个方法中，会将activity与window关联，开始添加doctor`wm.addView(decor, l)`。前面就知道，这里的WindowManager实现是WindowManagerImpl实例。而
+WindowManagerImpl中的add逻辑又是交给WindowManagerGlobal处理。看到WindowManagerGlobal#addView();
+```
+    public void addView(View view, ViewGroup.LayoutParams params,
+            Display display, Window parentWindow, int userId) {
+        // 省略代码。。。
+        synchronized (mLock) {
+         // 省略代码。。。
+            root = new ViewRootImpl(view.getContext(), display);
+            view.setLayoutParams(wparams);
+            mViews.add(view);
+            mRoots.add(root);
+            mParams.add(wparams);
+            try {
+                root.setView(view, wparams, panelParentView, userId);
+            } catch (RuntimeException e) {
+                if (index >= 0) {
+                    removeViewLocked(index, true);
+                }
+                throw e;
+            }
+        }
+    }
+```
+看到` root.setView(...);`这里引出了一个新的类:ViewRootImpl。看到它的setView()方法：
+```
+public void setView(View view, WindowManager.LayoutParams attrs, View panelParentView,  int userId) {
+        synchronized (this) {
+            if (mView == null) {
+                mView = view;
+                //省略代码。。。。
+                
+                // Schedule the first layout -before- adding to the window
+                // manager, to make sure we do the relayout before receiving
+                // any other events from the system.
+                requestLayout(); // 关注这一句即可。
+                InputChannel inputChannel = null;
+                // 。。。省略代码
+            }
+            。。。
+        }
+        。。。
+}           
+```
+重点是`requestLayout()`方法：
+```html
+    @Override
+    public void requestLayout() {
+        if (!mHandlingLayoutInLayoutRequest) {
+            checkThread();
+            mLayoutRequested = true;
+            scheduleTraversals();
+        }
+    }
+```

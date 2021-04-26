@@ -66,3 +66,8 @@ ams,pms,wms,apo,gradle,jvm,launcher
 
 
 anr原理，快排，tcp3次握手，socket，线程进程死锁原理
+
+binder原理 组件化 网络优化 线程池 实现阻塞队列 插件化 https activity启动
+打包流程 内存泄漏 okhttp原理
+gcroot 引用计数原理 databinding原理
+为什么activity 启动zygote中使用socket
