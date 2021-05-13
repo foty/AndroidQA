@@ -600,6 +600,8 @@ checkThread()就是检查当前线程是否是`original thread`,否则会抛出�
                 mAttachInfo.mInTouchMode = !mAddedTouchMode;  // 设置触控模式
                 ensureTouchModeLocally(mAddedTouchMode);
             } else {  // (跟前面一段大概差不多)
+            
+                //这里的equals是判断内部的mInner是否相同，如果窗口需要重新设置大小，mPendingDisplayCutout内部的mInner可能会改变
                 if (!mPendingDisplayCutout.equals(mAttachInfo.mDisplayCutout)) {
                     cutoutChanged = true;
                 }
@@ -645,7 +647,6 @@ private boolean measureHierarchy(final View host, final WindowManager.LayoutPara
             if (mTmpValue.type == TypedValue.TYPE_DIMENSION) { // 默认先使用一个基准值
                 baseSize = (int)mTmpValue.getDimension(packageMetrics);
             }
-            
             if (baseSize != 0 && desiredWindowWidth > baseSize) { // 基准值不能大于整个窗口的预期大小
                 childWidthMeasureSpec = getRootMeasureSpec(baseSize, lp.width); // 计算根窗口宽高的测量规格
                 childHeightMeasureSpec = getRootMeasureSpec(desiredWindowHeight, lp.height);
@@ -658,15 +659,13 @@ private boolean measureHierarchy(final View host, final WindowManager.LayoutPara
                     // Didn't fit in that size... try expanding a bit. 
                     baseSize = (baseSize+desiredWindowWidth)/2; 
                     childWidthMeasureSpec = getRootMeasureSpec(baseSize, lp.width);
-                    performMeasure(childWidthMeasureSpec, childHeightMeasureSpec);
-                    
-                    if ((host.getMeasuredWidthAndState()&View.MEASURED_STATE_TOO_SMALL) == 0) {                      
+                    performMeasure(childWidthMeasureSpec, childHeightMeasureSpec); //关键点
+                    if ((host.getMeasuredWidthAndState()&View.MEASURED_STATE_TOO_SMALL) == 0) { // 同样判断当前测量结果是否完美                      
                         goodMeasure = true;
                     }
                 }
             }
         }
-
         if (!goodMeasure) { // 还没有找到一个完美的测量结果，不管了，直接使用窗口尺寸作为标准测量子view了。
             childWidthMeasureSpec = getRootMeasureSpec(desiredWindowWidth, lp.width);
             childHeightMeasureSpec = getRootMeasureSpec(desiredWindowHeight, lp.height);
@@ -696,7 +695,7 @@ measureHierarchy()方法更像是做了一个窗口大小优化工作，来保�
 ```
 public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         boolean optical = isLayoutModeOptical(this); //是否是一个可见的viewGroup
-        if (optical != isLayoutModeOptical(mParent)) { // 测量规格重新校准
+        if (optical != isLayoutModeOptical(mParent)) { // 重新校准测量规格，
             Insets insets = getOpticalInsets();
             int oWidth  = insets.left + insets.right;
             int oHeight = insets.top  + insets.bottom;
@@ -704,43 +703,45 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             heightMeasureSpec = MeasureSpec.adjust(heightMeasureSpec, optical ? -oHeight : oHeight);
         }
 
-        // Suppress sign extension for the low bytes
+        // Suppress sign extension for the low bytes 将当前的宽高规格转换后方式生成一个key，用来保存(使用LongSparseLongArray)
         long key = (long) widthMeasureSpec << 32 | (long) heightMeasureSpec & 0xffffffffL;
         if (mMeasureCache == null) mMeasureCache = new LongSparseLongArray(2);
 
-        final boolean forceLayout = (mPrivateFlags & PFLAG_FORCE_LAYOUT) == PFLAG_FORCE_LAYOUT;
+        final boolean forceLayout = (mPrivateFlags & PFLAG_FORCE_LAYOUT) == PFLAG_FORCE_LAYOUT; // 是否需要强制布局。
 
         // Optimize layout by avoiding an extra EXACTLY pass when the view is
         // already measured as the correct size. In API 23 and below, this
         // extra pass is required to make LinearLayout re-distribute weight.
-        final boolean specChanged = widthMeasureSpec != mOldWidthMeasureSpec
+        
+        // 优化布局
+        final boolean specChanged = widthMeasureSpec != mOldWidthMeasureSpec // 规格是否改变(当前的测量规格是否与缓存值相同)
                 || heightMeasureSpec != mOldHeightMeasureSpec;
-        final boolean isSpecExactly = MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.EXACTLY
+        final boolean isSpecExactly = MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.EXACTLY // 是否是MeasureSpec.EXACTLY模式
                 && MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY;
-        final boolean matchesSpecSize = getMeasuredWidth() == MeasureSpec.getSize(widthMeasureSpec)
+        final boolean matchesSpecSize = getMeasuredWidth() == MeasureSpec.getSize(widthMeasureSpec) // 规格(测量的宽高)是否匹配
                 && getMeasuredHeight() == MeasureSpec.getSize(heightMeasureSpec);
         final boolean needsLayout = specChanged
-                && (sAlwaysRemeasureExactly || !isSpecExactly || !matchesSpecSize);
+                && (sAlwaysRemeasureExactly || !isSpecExactly || !matchesSpecSize); // 是否需要重新布局
 
-        if (forceLayout || needsLayout) {
-            // first clears the measured dimension flag
-            mPrivateFlags &= ~PFLAG_MEASURED_DIMENSION_SET;
-
+        if (forceLayout || needsLayout) { // 需要重新布局
+            // first clears the measured dimension flag // 清除测量结果标记
+            mPrivateFlags &= ~PFLAG_MEASURED_DIMENSION_SET; 
+            //解析所有RTL相关属性。猜测是去解析xml布局了，有布局方向，尺寸，drawable，padding等等
             resolveRtlPropertiesIfNeeded();
 
             int cacheIndex = forceLayout ? -1 : mMeasureCache.indexOfKey(key);
-            if (cacheIndex < 0 || sIgnoreMeasureCache) {
+            if (cacheIndex < 0 || sIgnoreMeasureCache) { //如果需要重新布局触发onMeasure()回调(如果是低版本-19以下，强制执行，忽略forceLayout值)
                 // measure ourselves, this should set the measured dimension flag back
                 onMeasure(widthMeasureSpec, heightMeasureSpec);
                 mPrivateFlags3 &= ~PFLAG3_MEASURE_NEEDED_BEFORE_LAYOUT;
-            } else {
+            } else {  // 否则使用之前保存的值,用前面的key
                 long value = mMeasureCache.valueAt(cacheIndex);
                 // Casting a long to int drops the high 32 bits, no mask needed
                 setMeasuredDimensionRaw((int) (value >> 32), (int) value);
                 mPrivateFlags3 |= PFLAG3_MEASURE_NEEDED_BEFORE_LAYOUT;
             } 
             // flag not set, setMeasuredDimension() was not invoked, we raise
-            // an exception to warn the developer
+            // an exception to warn the developer //强制性判断，要求一定要调用setMeasuredDimensionRaw()方法，否则抛出异常
             if ((mPrivateFlags & PFLAG_MEASURED_DIMENSION_SET) != PFLAG_MEASURED_DIMENSION_SET) {
                 throw new IllegalStateException("View with id " + getId() + ": "
                         + getClass().getName() + "#onMeasure() did not set the"
@@ -748,25 +749,22 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                         + " setMeasuredDimension()");
             }
 
-            mPrivateFlags |= PFLAG_LAYOUT_REQUIRED;
+            mPrivateFlags |= PFLAG_LAYOUT_REQUIRED; //更新测量结果重新标记
         }
-
         mOldWidthMeasureSpec = widthMeasureSpec;
         mOldHeightMeasureSpec = heightMeasureSpec;
-
-        mMeasureCache.put(key, ((long) mMeasuredWidth) << 32 |
+        // 保存当前的测量规格，mMeasuredWidth、mMeasuredHeight的值会在setMeasuredDimensionRaw()方法重新赋值，同时更新测量标志mPrivateFlags。
+        mMeasureCache.put(key, ((long) mMeasuredWidth) << 32 | 
                 (long) mMeasuredHeight & 0xffffffffL); // suppress sign extension
     }
 ```
-
-
-
-
-
-
+总体上看`mView.measure(*,*)`这个方法主要还是做优化工作(一些详细看上面注释)，特别是针对测量规格，其中很重要的一点就是回触发onMeasure()回调。写过自定义View的
+都知道，这是重要一环。把测量这一步骤交给开发者自己去决定。  
+下面回到ViewRootImpl#measureHierarchy()方法，也就是接着执行完`performMeasure()`之后，再次判断测量结果是否是最后，最后返回表示窗口是否发生变化的boolean
+结果。performMeasure()方法结束，流程重新回到performTraversals()
 ```        
-
-        if (collectViewAttributes()) {
+       // ...衔接 measureHierarchy()
+       if (collectViewAttributes()) { // 保存View的属性
             params = lp;
         }
         if (mAttachInfo.mForceReportNewAttributes) {
@@ -774,12 +772,13 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             params = lp;
         }
 
-        if (mFirst || mAttachInfo.mViewVisibilityChanged) {
+        if (mFirst || mAttachInfo.mViewVisibilityChanged) { // 如果是第一次绘制，或者view的可见状态发生变化，需要重新调整布局属性
             mAttachInfo.mViewVisibilityChanged = false;
             int resizeMode = mSoftInputMode &
                     WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST;
             // If we are in auto resize mode, then we need to determine
             // what mode to use now.
+            // 如果我们处于自动调整大小模式，那么我们需要确定现在使用什么模式,重新调整布局参数。
             if (resizeMode == WindowManager.LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED) {
                 final int N = mAttachInfo.mScrollContainers.size();
                 for (int i=0; i<N; i++) {
@@ -800,15 +799,15 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             }
         }
 
-        if (mApplyInsetsRequested) {
-            dispatchApplyInsets(host);
+        if (mApplyInsetsRequested) {// 是否接受重新测量请求，一般发生绘制时mApplyInsetsRequested的值都是true，
+            dispatchApplyInsets(host); //分发请求，mApplyInsetsRequested值会重新等于false。
             if (mLayoutRequested) {
                 // Short-circuit catching a new layout request here, so
                 // we don't need to go through two layout passes when things
                 // change due to fitting system windows, which can happen a lot.
-                windowSizeMayChange |= measureHierarchy(host, lp,
+                windowSizeMayChange |= measureHierarchy(host, lp,  //优化布局，前面跟踪分析过
                         mView.getContext().getResources(),
-                        desiredWindowWidth, desiredWindowHeight);
+                        desiredWindowWidth, desiredWindowHeight); 
             }
         }
 
@@ -819,23 +818,24 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             mLayoutRequested = false;
         }
 
-        boolean windowShouldResize = layoutRequested && windowSizeMayChange
+        boolean windowShouldResize = layoutRequested && windowSizeMayChange  // 窗口是否需要重新设置大小
             && ((mWidth != host.getMeasuredWidth() || mHeight != host.getMeasuredHeight())
                 || (lp.width == ViewGroup.LayoutParams.WRAP_CONTENT &&
                         frame.width() < desiredWindowWidth && frame.width() != mWidth)
                 || (lp.height == ViewGroup.LayoutParams.WRAP_CONTENT &&
                         frame.height() < desiredWindowHeight && frame.height() != mHeight));
+                        
         windowShouldResize |= mDragResizing && mResizeMode == RESIZE_MODE_FREEFORM;
 
         // If the activity was just relaunched, it might have unfrozen the task bounds (while
         // relaunching), so we need to force a call into window manager to pick up the latest
         // bounds.
-        windowShouldResize |= mActivityRelaunched;
+        windowShouldResize |= mActivityRelaunched; //可能activity刚刚启动，需要重新获取一下，保证最新
 
         // Determine whether to compute insets.
         // If there are no inset listeners remaining then we may still need to compute
         // insets in case the old insets were non-empty and must be reset.
-        final boolean computesInternalInsets =
+        final boolean computesInternalInsets =  // 是否有内部计算监听器
                 mAttachInfo.mTreeObserver.hasComputeInternalInsetsListeners()
                 || mAttachInfo.mHasNonEmptyGivenInternalInsets;
 
@@ -853,12 +853,11 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         /* True if surface generation id changes. */
         boolean surfaceReplaced = false;
 
-        final boolean windowAttributesChanged = mWindowAttributesChanged;
+        final boolean windowAttributesChanged = mWindowAttributesChanged; // 窗口属性是否改变
         if (windowAttributesChanged) {
             mWindowAttributesChanged = false;
             params = lp;
         }
-
         if (params != null) {
             if ((host.mPrivateFlags & View.PFLAG_REQUEST_TRANSPARENT_REGIONS) != 0
                     && !PixelFormat.formatHasAlpha(params.format)) {
@@ -867,7 +866,8 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             adjustLayoutParamsForCompatibility(params);
             controlInsetsForCompatibility(params);
         }
-
+        
+        // 如果是 第一次绘制||窗口需要调整大小||view可见性发生变化||重新计算过窗口大小||窗口属性发生改变||下次绘制需要重新布局
         if (mFirst || windowShouldResize || viewVisibilityChanged || cutoutChanged || params != null
                 || mForceNextWindowRelayout) {
             mForceNextWindowRelayout = false;
@@ -895,11 +895,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             boolean hadSurface = mSurface.isValid();
 
             try {
-                if (DEBUG_LAYOUT) {
-                    Log.i(mTag, "host=w:" + host.getMeasuredWidth() + ", h:" +
-                            host.getMeasuredHeight() + ", params=" + params);
-                }
-
                 if (mAttachInfo.mThreadedRenderer != null) {
                     // relayoutWindow may decide to destroy mSurface. As that decision
                     // happens in WindowManager service, we need to be defensive here
@@ -912,10 +907,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     mChoreographer.mFrameInfo.addFlags(FrameInfo.FLAG_WINDOW_LAYOUT_CHANGED);
                 }
                 relayoutResult = relayoutWindow(params, viewVisibility, insetsPending);
-
-                if (DEBUG_LAYOUT) Log.v(mTag, "relayout: frame=" + frame.toShortString()
-                        + " cutout=" + mPendingDisplayCutout.get().toString()
-                        + " surface=" + mSurface);
 
                 // If the pending {@link MergedConfiguration} handed back from
                 // {@link #relayoutWindow} does not match the one last reported,

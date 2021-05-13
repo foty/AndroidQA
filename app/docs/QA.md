@@ -53,7 +53,7 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 
 <p>
 
-##### View的绘制流程与自定义view手法
+##### View的绘制流程与自定义view手法 (API 30)
 从源码开始到view有以下几个点：
 * Window、WindowManager和WMS(WindowManagerService)
 * view的绘制
