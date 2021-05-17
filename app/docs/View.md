@@ -4,7 +4,7 @@
  
 ##### Window、PhoneWindow、DecorView
 在跟踪ActivityThread启动activity最后阶段的时候就有提到过window，就是在ActivityThread#performLaunchActivity()，看到这段代码：
-```
+```html
    Window window = null;
    if (r.mPendingRemoveWindow != null && r.mPreserveWindow) {
        window = r.mPendingRemoveWindow;
@@ -18,7 +18,7 @@
            r.referrer, r.voiceInteractor, window, r.configCallback);
 ```
 跟踪到Activity#attach()：
-```
+```html
     @UnsupportedAppUsage
     final void attach(...){
     
@@ -45,7 +45,7 @@
     }
 ```
 看到`mWindow.setWindowManager()`
-```
+```html
   public void setWindowManager(WindowManager wm, IBinder appToken, String appName,
          boolean hardwareAccelerated) {
         mAppToken = appToken;
@@ -64,7 +64,7 @@ attach()方法实际还是做初始化的事情，mWindow是PhoneWindow实例(Wi
 一个接口，最后获取的实例它的子类WindowManagerImpl。   
 performLaunchActivity()之后会进入到Activity生命周期，体现就是走Activity#onCreate()方法。设置布局的入口在`setContentView(R.layout.activity_main);`:
 看下setContentView():
-```
+```html
   @Override
     public void setContentView(@LayoutRes int layoutResID) {
         getDelegate().setContentView(layoutResID);
@@ -72,7 +72,7 @@ performLaunchActivity()之后会进入到Activity生命周期，体现就是走A
 ```
 这里看的源代码是android 11，对应api版本是30。不同版本的api实现可能有些不一样。`setContentView()`这里使用了委托，委托给AppCompatDelegate，AppCompatDelegate
 是一个抽象类，实现在AppCompatDelegateImpl。看到这个类的`setContentView`:
-```
+```html
     public void setContentView(int resId) {
         ensureSubDecor();
         ViewGroup contentParent = (ViewGroup) mSubDecor.findViewById(android.R.id.content);
@@ -82,7 +82,7 @@ performLaunchActivity()之后会进入到Activity生命周期，体现就是走A
     }
 ```
 看到AppCompatDelegateImpl#ensureSubDecor()：
-```
+```text
     private void ensureSubDecor() {
         if (!mSubDecorInstalled) {
             mSubDecor = createSubDecor(); // 创建mSubDecor,确保mSubDecor不是null
@@ -110,7 +110,7 @@ performLaunchActivity()之后会进入到Activity生命周期，体现就是走A
 ```
 mSubDecor是ViewGroup实例。猜测是容纳传入View的容器，但是不是Window还不能确定。跟踪`createSubDecor()`,方法略长，只挑选些关键部分，省略部分代码以
 及注释，log等：   
-```
+```text
     private ViewGroup createSubDecor() {
        
         // 省略代码。。。主要就是通过TypedArray获取主题样式。比如ActionBar，windowNoTitle等设置
@@ -191,7 +191,7 @@ mSubDecor是ViewGroup实例。猜测是容纳传入View的容器，但是不是W
 ```
 看到摘选代码中的`mWindow.getDecorView();`，前面说过Window的实现是在PhoneWindow,所以要在PhoneWindow类找getDecorView()。经过方法调用，最终来到
 PhoneWindow的`installDecor()`。
-```
+```text
     private void installDecor() {
         mForceDecorInstall = false;
         if (mDecor == null) {
@@ -212,7 +212,7 @@ PhoneWindow的`installDecor()`。
 ```
 installDecor()保证了mDecor不会为null，并且设置一些系统相关样式属性参数。`generateDecor(-1);`方法主要是先获取Context。是使用，然后new出DecorView对象。另外
 `generateLayout(mDecor)`这里有一点要注意：
-```
+```html
 protected ViewGroup generateLayout(DecorView decor){
  // 省略前面代码。。。
  
@@ -236,7 +236,7 @@ protected ViewGroup generateLayout(DecorView decor){
 这里找到id为R.id.content的View，如果能找到并且它原来有其他的子view，要把这些内容迁移到新的容器(contentView)。contentView是subDecor的第一个子view，
 是一个ContentFrameLayout。随后将contentView的id设置为android.R.id.content。最后将新的容器设置给Window(`mWindow.setContentView(subDecor);`)，
 PhoneWindow#setContentView(),最终或调用下面方法：
-```
+```html
     public void setContentView(View view, ViewGroup.LayoutParams params) {
         if (mContentParent == null) {
             installDecor();
@@ -261,13 +261,13 @@ PhoneWindow#setContentView(),最终或调用下面方法：
 ```
 前面第一个if else中`installDecor()`前面已经有看过，下面看到`FEATURE_CONTENT_TRANSITIONS`这个flag，大概翻译就是内容过渡标志。我的理解是类似activity的转场
 动画。带有这个标志是内容中的某个控件或元素支持过渡动画。如果需要内容过渡则通过Scene添加view，否则直接添加view到mContentParent。在Scene也可以看到：
-```
+```html
     public Scene(ViewGroup sceneRoot, View layout) {
         mSceneRoot = sceneRoot;
         mLayout = layout;
     }
 ```
-```
+```html
     public void enter() {
         // Apply layout change, if any
         if (mLayoutId > 0 || mLayout != null) {
@@ -293,7 +293,7 @@ PhoneWindow#setContentView(),最终或调用下面方法：
 会被替换为ContentFrameLayout(也是继承FrameLayout)，但id不会被改变。开发中为activity设置的ContentView，就是它的子View。
 
 subDecor添加完mContentParent后，一直返回到最开始地方，也就是AppCompatDelegateImpl#setContentView()中的ensureSubDecor(),再贴一遍代码：
-```
+```text
     public void setContentView(View v) {
         ensureSubDecor(); // 完成了Decor的创建初始化工作
         ViewGroup contentParent = (ViewGroup) mSubDecor.findViewById(android.R.id.content);
@@ -304,7 +304,7 @@ subDecor添加完mContentParent后，一直返回到最开始地方，也就是A
 ```
 剩下逻辑就是将自己绘制的xml生成的View添加到contentParent容器中。到此Activity#setContentView(R.layout.xx)流程跟踪结束，同时对Window，PhoneWindow，
 DecorView也有一个比较清楚的认识。这里额外做一个小测试，递归打印View的父类处理：从自己的xml文件开始：
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -326,7 +326,7 @@ DecorView也有一个比较清楚的认识。这里额外做一个小测试，�
 </androidx.constraintlayout.widget.ConstraintLayout>
 ```
 打印代码为
-```
+```html
        View view =  findViewById(R.id.tvHello);
        Log.d("TAG", "view= "+ view);
        while (view != null) {
@@ -335,7 +335,7 @@ DecorView也有一个比较清楚的认识。这里额外做一个小测试，�
        }
 ```
 输出结果：
-```
+```text
 D: view= androidx.appcompat.widget.AppCompatTextView{2d62ef0 V.ED.... ......ID 0,0-0,0 #7f07008d app:id/tvHello}
 D: parent= androidx.constraintlayout.widget.ConstraintLayout{351f4c69 V.E..... ......I. 0,0-0,0}
 D: parent= androidx.appcompat.widget.ContentFrameLayout{29d1b6ee V.E..... ......I. 0,0-0,0 #1020002 android:id/content}
@@ -356,7 +356,7 @@ View的绘制关键就3部分
 
 ##### View的绘制
 Activity的onCreate()方法结束，进入到onResume()。但是在这之前在ActivityThread会先执行handleResumeActivity():
-```
+```text
  public void handleResumeActivity(IBinder token, boolean finalStateRequest, boolean isForward,
             String reason) {
             
@@ -393,7 +393,7 @@ Activity的onCreate()方法结束，进入到onResume()。但是在这之前在A
 ```
 在这个方法中，会将activity与window关联，开始添加doctor`wm.addView(decor, l)`。前面就知道，这里的WindowManager实现是WindowManagerImpl实例。而
 WindowManagerImpl中的add逻辑又是交给WindowManagerGlobal处理。看到WindowManagerGlobal#addView();
-```
+```text
     public void addView(View view, ViewGroup.LayoutParams params,
             Display display, Window parentWindow, int userId) {
         // 省略代码。。。
@@ -416,7 +416,7 @@ WindowManagerImpl中的add逻辑又是交给WindowManagerGlobal处理。看到Wi
     }
 ```
 看到`root.setView(...);`这里引出了一个新的类:ViewRootImpl。看到它的setView()方法：
-```
+```text
 public void setView(View view, WindowManager.LayoutParams attrs, View panelParentView,  int userId) {
         synchronized (this) {
             if (mView == null) {
@@ -463,7 +463,7 @@ checkThread()就是检查当前线程是否是`original thread`,否则会抛出�
     }
 ```
 `mTraversalRunnable`是一个Runnable，他的run方法逻辑只执行了一个方法`doTraversal();`
-```
+```text
     void doTraversal() {
         if (mTraversalScheduled) {
             mTraversalScheduled = false;
@@ -481,7 +481,7 @@ checkThread()就是检查当前线程是否是`original thread`,否则会抛出�
 ```
 `doTraversal()`会执行到`performTraversals()`,到这里才是真真正正的开始绘制。下面开始跟踪理解这个方法。(注：这个方法又大又长，会删除部分没意义的log，debug
 日志，注释等)。
-```
+```text
     private void performTraversals() {
         // cache mView since it is used so much below...
         final View host = mView; mView在setView()方法被赋值，这个mView/host就是DecorView的实例。
@@ -627,7 +627,7 @@ checkThread()就是检查当前线程是否是`original thread`,否则会抛出�
         }
 ```
 这一段主要计算窗口的大小，到`measureHierarchy()`
-```
+```text
 private boolean measureHierarchy(final View host, final WindowManager.LayoutParams lp,
             final Resources res, final int desiredWindowWidth, final int desiredWindowHeight) {
         int childWidthMeasureSpec;  //子view宽度的测量规格
@@ -678,7 +678,7 @@ private boolean measureHierarchy(final View host, final WindowManager.LayoutPara
     }
 ```
 measureHierarchy()方法更像是做了一个窗口大小优化工作，来保证这个view层级视图是最合适，最舒服的。同时会触发自定义控件中onMeasure()的回调。
-```
+```text
  private void performMeasure(int childWidthMeasureSpec, int childHeightMeasureSpec) {
         if (mView == null) {
             return;
@@ -692,7 +692,7 @@ measureHierarchy()方法更像是做了一个窗口大小优化工作，来保�
     }
 ```
 在DecorView并没有`mView.measure(*,*)`这个方法，只能找它的父类FrameLayout->ViewGroup->View。最后会在View中找到：
-```
+```html
 public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         boolean optical = isLayoutModeOptical(this); //是否是一个可见的viewGroup
         if (optical != isLayoutModeOptical(mParent)) { // 重新校准测量规格，
@@ -762,7 +762,8 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
 都知道，这是重要一环。把测量这一步骤交给开发者自己去决定。  
 下面回到ViewRootImpl#measureHierarchy()方法，也就是接着执行完`performMeasure()`之后，再次判断测量结果是否是最后，最后返回表示窗口是否发生变化的boolean
 结果。performMeasure()方法结束，流程重新回到performTraversals()
-```        
+```
+   
        // ...衔接 measureHierarchy()
        if (collectViewAttributes()) { // 保存View的属性
             params = lp;
@@ -798,7 +799,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                 }
             }
         }
-
         if (mApplyInsetsRequested) {// 是否接受重新测量请求，一般发生绘制时mApplyInsetsRequested的值都是true，
             dispatchApplyInsets(host); //分发请求，mApplyInsetsRequested值会重新等于false。
             if (mLayoutRequested) {
@@ -817,7 +817,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             // layout pass.
             mLayoutRequested = false;
         }
-
         boolean windowShouldResize = layoutRequested && windowSizeMayChange  // 窗口是否需要重新设置大小
             && ((mWidth != host.getMeasuredWidth() || mHeight != host.getMeasuredHeight())
                 || (lp.width == ViewGroup.LayoutParams.WRAP_CONTENT &&
@@ -826,7 +825,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                         frame.height() < desiredWindowHeight && frame.height() != mHeight));
                         
         windowShouldResize |= mDragResizing && mResizeMode == RESIZE_MODE_FREEFORM;
-
         // If the activity was just relaunched, it might have unfrozen the task bounds (while
         // relaunching), so we need to force a call into window manager to pick up the latest
         // bounds.
@@ -906,24 +904,21 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     }
                     mChoreographer.mFrameInfo.addFlags(FrameInfo.FLAG_WINDOW_LAYOUT_CHANGED);
                 }
-                relayoutResult = relayoutWindow(params, viewVisibility, insetsPending);
+                relayoutResult = relayoutWindow(params, viewVisibility, insetsPending); //计算窗口大小
 
                 // If the pending {@link MergedConfiguration} handed back from
                 // {@link #relayoutWindow} does not match the one last reported,
                 // WindowManagerService has reported back a frame from a configuration not yet
                 // handled by the client. In this case, we need to accept the configuration so we
                 // do not lay out and draw with the wrong configuration.
+                // 与之前保存的测量大小比较
                 if (!mPendingMergedConfiguration.equals(mLastReportedMergedConfiguration)) {
-                    if (DEBUG_CONFIGURATION) Log.v(mTag, "Visible with new config: "
-                            + mPendingMergedConfiguration.getMergedConfiguration());
-                    performConfigurationChange(mPendingMergedConfiguration, !mFirst,
-                            INVALID_DISPLAY /* same display */);
+                    performConfigurationChange(mPendingMergedConfiguration, !mFirst,INVALID_DISPLAY /* same display */);
                     updatedConfiguration = true;
                 }
-
                 cutoutChanged = !mPendingDisplayCutout.equals(mAttachInfo.mDisplayCutout);
                 surfaceSizeChanged = (relayoutResult
-                        & WindowManagerGlobal.RELAYOUT_RES_SURFACE_RESIZED) != 0;
+                      & WindowManagerGlobal.RELAYOUT_RES_SURFACE_RESIZED) != 0;
                 final boolean alwaysConsumeSystemBarsChanged =
                         mPendingAlwaysConsumeSystemBars != mAttachInfo.mAlwaysConsumeSystemBars;
                 final boolean colorModeChanged = hasColorModeChanged(lp.getColorMode());
@@ -932,25 +927,22 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                 surfaceReplaced = (surfaceGenerationId != mSurface.getGenerationId())
                         && mSurface.isValid();
 
-                if (cutoutChanged) {
+                if (cutoutChanged) {//窗口大小发生过改变，重新保存一个新的值
                     mAttachInfo.mDisplayCutout.set(mPendingDisplayCutout);
-                    if (DEBUG_LAYOUT) {
-                        Log.v(mTag, "DisplayCutout changing to: " + mAttachInfo.mDisplayCutout);
-                    }
-                    // Need to relayout with content insets.
+                    // Need to relayout with content insets. 需要重新布局内容
                     dispatchApplyInsets = true;
                 }
                 if (alwaysConsumeSystemBarsChanged) {
                     mAttachInfo.mAlwaysConsumeSystemBars = mPendingAlwaysConsumeSystemBars;
                     dispatchApplyInsets = true;
                 }
-                if (updateCaptionInsets()) {
+                if (updateCaptionInsets()) { // 更新完插入内容
                     dispatchApplyInsets = true;
                 }
                 if (dispatchApplyInsets || mLastSystemUiVisibility !=
                         mAttachInfo.mSystemUiVisibility || mApplyInsetsRequested) {
                     mLastSystemUiVisibility = mAttachInfo.mSystemUiVisibility;
-                    dispatchApplyInsets(host);
+                    dispatchApplyInsets(host); // 分发应用内容物
                     // We applied insets so force contentInsetsChanged to ensure the
                     // hierarchy is measured below.
                     dispatchApplyInsets = true;
@@ -960,7 +952,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                             lp.getColorMode() == ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT);
                 }
 
-                if (surfaceCreated) {
+                if (surfaceCreated) { // 创建surface，用来重新绘制
                     // If we are creating a new surface, then we need to
                     // completely redraw it.
                     mFullRedrawNeeded = true;
@@ -969,7 +961,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     // Only initialize up-front if transparent regions are not
                     // requested, otherwise defer to see if the entire window
                     // will be transparent
-                    if (mAttachInfo.mThreadedRenderer != null) {
+                    if (mAttachInfo.mThreadedRenderer != null) { // 预初始化
                         try {
                             hwInitialized = mAttachInfo.mThreadedRenderer.initialize(mSurface);
                             if (hwInitialized && (host.mPrivateFlags
@@ -1050,7 +1042,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                         endDragResizing();
                     }
                 }
-                if (!mUseMTRenderer) {
+                if (!mUseMTRenderer) { // 不使用使用MT渲染
                     if (dragResizing) {
                         mCanvasOffsetX = mWinFrame.left;
                         mCanvasOffsetY = mWinFrame.top;
@@ -1061,32 +1053,27 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             } catch (RemoteException e) {
             }
 
-            if (DEBUG_ORIENTATION) Log.v(
-                    TAG, "Relayout returned: frame=" + frame + ", surface=" + mSurface);
-
             mAttachInfo.mWindowLeft = frame.left;
             mAttachInfo.mWindowTop = frame.top;
 
             // !!FIXME!! This next section handles the case where we did not get the
             // window size we asked for. We should avoid this by getting a maximum size from
             // the window session beforehand.
-            if (mWidth != frame.width() || mHeight != frame.height()) {
+            if (mWidth != frame.width() || mHeight != frame.height()) { // 重新校准窗口大小
                 mWidth = frame.width();
                 mHeight = frame.height();
             }
-
             if (mSurfaceHolder != null) {
                 // The app owns the surface; tell it about what is going on.
-                if (mSurface.isValid()) {
+                if (mSurface.isValid()) { //可用
                     // XXX .copyFrom() doesn't work!
                     //mSurfaceHolder.mSurface.copyFrom(mSurface);
                     mSurfaceHolder.mSurface = mSurface;
                 }
                 mSurfaceHolder.setSurfaceFrameSize(mWidth, mHeight);
                 mSurfaceHolder.mSurfaceLock.unlock();
-                if (surfaceCreated) {
+                if (surfaceCreated) { // 调用底层资源工作
                     mSurfaceHolder.ungetCallbacks();
-
                     mIsCreating = true;
                     SurfaceHolder.Callback[] callbacks = mSurfaceHolder.getCallbacks();
                     if (callbacks != null) {
@@ -1108,7 +1095,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     mIsCreating = false;
                 }
 
-                if (surfaceDestroyed) {
+                if (surfaceDestroyed) { // 表面被销毁，通知相关结束绘制，释放资源
                     notifyHolderSurfaceDestroyed();
                     mSurfaceHolder.mSurfaceLock.lock();
                     try {
@@ -1119,20 +1106,20 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                 }
             }
 
-            final ThreadedRenderer threadedRenderer = mAttachInfo.mThreadedRenderer;
+            final ThreadedRenderer threadedRenderer = mAttachInfo.mThreadedRenderer; // 渲染线程
             if (threadedRenderer != null && threadedRenderer.isEnabled()) {
                 if (hwInitialized
                         || mWidth != threadedRenderer.getWidth()
                         || mHeight != threadedRenderer.getHeight()
                         || mNeedsRendererSetup) {
-                    threadedRenderer.setup(mWidth, mHeight, mAttachInfo,
+                    threadedRenderer.setup(mWidth, mHeight, mAttachInfo, // 设置渲染器
                             mWindowAttributes.surfaceInsets);
                     mNeedsRendererSetup = false;
                 }
             }
 
-            if (!mStopped || mReportNextDraw) {
-                boolean focusChangedDueToTouchMode = ensureTouchModeLocally(
+            if (!mStopped || mReportNextDraw) { // 没有停止绘制或者需要再次绘制
+                boolean focusChangedDueToTouchMode = ensureTouchModeLocally( // 确保触摸已经被设置
                         (relayoutResult&WindowManagerGlobal.RELAYOUT_RES_IN_TOUCH_MODE) != 0);
                 if (focusChangedDueToTouchMode || mWidth != host.getMeasuredWidth()
                         || mHeight != host.getMeasuredHeight() || dispatchApplyInsets ||
@@ -1140,13 +1127,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     int childWidthMeasureSpec = getRootMeasureSpec(mWidth, lp.width);
                     int childHeightMeasureSpec = getRootMeasureSpec(mHeight, lp.height);
 
-                    if (DEBUG_LAYOUT) Log.v(mTag, "Ooops, something changed!  mWidth="
-                            + mWidth + " measuredWidth=" + host.getMeasuredWidth()
-                            + " mHeight=" + mHeight
-                            + " measuredHeight=" + host.getMeasuredHeight()
-                            + " dispatchApplyInsets=" + dispatchApplyInsets);
-
-                     // Ask host how big it wants to be
+                     // Ask host how big it wants to be 使用校准后的大小再次测量
                     performMeasure(childWidthMeasureSpec, childHeightMeasureSpec);
 
                     // Implementation of weights from WindowManager.LayoutParams
@@ -1156,27 +1137,23 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     int height = host.getMeasuredHeight();
                     boolean measureAgain = false;
 
-                    if (lp.horizontalWeight > 0.0f) {
+                    if (lp.horizontalWeight > 0.0f) { // 水平方向权重
                         width += (int) ((mWidth - width) * lp.horizontalWeight);
                         childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(width,
                                 MeasureSpec.EXACTLY);
-                        measureAgain = true;
+                        measureAgain = true; //需要再测量一次
                     }
-                    if (lp.verticalWeight > 0.0f) {
+                    if (lp.verticalWeight > 0.0f) { // 垂直方向权重
                         height += (int) ((mHeight - height) * lp.verticalWeight);
                         childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(height,
                                 MeasureSpec.EXACTLY);
                         measureAgain = true;
                     }
 
-                    if (measureAgain) {
-                        if (DEBUG_LAYOUT) Log.v(mTag,
-                                "And hey let's measure once more: width=" + width
-                                + " height=" + height);
+                    if (measureAgain) { // 再测量
                         performMeasure(childWidthMeasureSpec, childHeightMeasureSpec);
                     }
-
-                    layoutRequested = true;
+                    layoutRequested = true; // 测量结束，需要重新布局
                 }
             }
         } else {
@@ -1185,7 +1162,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             // in the attach info. We translate only the window frame since on window move
             // the window manager tells us only for the new frame but the insets are the
             // same and we do not want to translate them more than once.
-            maybeHandleWindowMove(frame);
+            maybeHandleWindowMove(frame); // 检查窗口是否因为添加内容产生偏移，继而执行偏移动画
         }
 
         if (surfaceSizeChanged || surfaceReplaced || surfaceCreated || windowAttributesChanged) {
@@ -1198,18 +1175,19 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             // stopping, but on the client side it doesn't get stopped since it's restarted quick
             // enough. WMS doesn't want to keep around old children since they will leak when the
             // client creates new children.
-            updateBoundsLayer(surfaceReplaced);
+            updateBoundsLayer(surfaceReplaced); // 更新边界表面
         }
 
         final boolean didLayout = layoutRequested && (!mStopped || mReportNextDraw);
         boolean triggerGlobalLayoutListener = didLayout
                 || mAttachInfo.mRecomputeGlobalAttributes;
         if (didLayout) {
-            performLayout(lp, mWidth, mHeight);
+            performLayout(lp, mWidth, mHeight); // 关键点之一，会触发onLayout()的回调。
+```
 
+```
             // By this point all views have been sized and positioned
             // We can compute the transparent area
-
             if ((host.mPrivateFlags & View.PFLAG_REQUEST_TRANSPARENT_REGIONS) != 0) {
                 // start out transparent
                 // TODO: AVOID THAT CALL BY CACHING THE RESULT?
