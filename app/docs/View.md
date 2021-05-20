@@ -1070,7 +1070,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     //mSurfaceHolder.mSurface.copyFrom(mSurface);
                     mSurfaceHolder.mSurface = mSurface;
                 }
-                mSurfaceHolder.setSurfaceFrameSize(mWidth, mHeight);
+                mSurfaceHolder.setSurfaceFrameSize(mWidth, mHeight); // 设置表层大小
                 mSurfaceHolder.mSurfaceLock.unlock();
                 if (surfaceCreated) { // 调用底层资源工作
                     mSurfaceHolder.ungetCallbacks();
@@ -1082,7 +1082,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                         }
                     }
                 }
-
                 if ((surfaceCreated || surfaceReplaced || surfaceSizeChanged
                         || windowAttributesChanged) && mSurface.isValid()) {
                     SurfaceHolder.Callback[] callbacks = mSurfaceHolder.getCallbacks();
@@ -1094,7 +1093,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     }
                     mIsCreating = false;
                 }
-
                 if (surfaceDestroyed) { // 表面被销毁，通知相关结束绘制，释放资源
                     notifyHolderSurfaceDestroyed();
                     mSurfaceHolder.mSurfaceLock.lock();
@@ -1105,7 +1103,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     }
                 }
             }
-
             final ThreadedRenderer threadedRenderer = mAttachInfo.mThreadedRenderer; // 渲染线程
             if (threadedRenderer != null && threadedRenderer.isEnabled()) {
                 if (hwInitialized
@@ -1117,7 +1114,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     mNeedsRendererSetup = false;
                 }
             }
-
             if (!mStopped || mReportNextDraw) { // 没有停止绘制或者需要再次绘制
                 boolean focusChangedDueToTouchMode = ensureTouchModeLocally( // 确保触摸已经被设置
                         (relayoutResult&WindowManagerGlobal.RELAYOUT_RES_IN_TOUCH_MODE) != 0);
@@ -1184,6 +1180,9 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         if (didLayout) {
             performLayout(lp, mWidth, mHeight); // 关键点之一，会触发onLayout()的回调。
 ```
+
+
+
 
 ```
             // By this point all views have been sized and positioned
