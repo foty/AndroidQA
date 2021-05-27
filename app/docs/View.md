@@ -1136,7 +1136,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                     if (lp.horizontalWeight > 0.0f) { // 水平方向权重
                         width += (int) ((mWidth - width) * lp.horizontalWeight);
                         childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(width,
-                                MeasureSpec.EXACTLY);
+                                   MeasureSpec.EXACTLY);
                         measureAgain = true; //需要再测量一次
                     }
                     if (lp.verticalWeight > 0.0f) { // 垂直方向权重
@@ -1162,16 +1162,8 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         }
 
         if (surfaceSizeChanged || surfaceReplaced || surfaceCreated || windowAttributesChanged) {
-            // If the surface has been replaced, there's a chance the bounds layer is not parented
-            // to the new layer. When updating bounds layer, also reparent to the main VRI
-            // SurfaceControl to ensure it's correctly placed in the hierarchy.
-            //
-            // This needs to be done on the client side since WMS won't reparent the children to the
-            // new surface if it thinks the app is closing. WMS gets the signal that the app is
-            // stopping, but on the client side it doesn't get stopped since it's restarted quick
-            // enough. WMS doesn't want to keep around old children since they will leak when the
-            // client creates new children.
-            updateBoundsLayer(surfaceReplaced); // 更新边界表面
+            // 如果表面大小改变，发生替换，重建，属性改变，需要重新更新边界表面
+            updateBoundsLayer(surfaceReplaced);
         }
 
         final boolean didLayout = layoutRequested && (!mStopped || mReportNextDraw);
@@ -1179,11 +1171,226 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                 || mAttachInfo.mRecomputeGlobalAttributes;
         if (didLayout) {
             performLayout(lp, mWidth, mHeight); // 关键点之一，会触发onLayout()的回调。
+          // 。。省略代码。。
+        }    
 ```
+转到performLayout()方法:
+```
+    private void performLayout(WindowManager.LayoutParams lp, int desiredWindowWidth,int desiredWindowHeight) {
+        mScrollMayChange = true;
+        mInLayout = true;
+        final View host = mView;
+        if (host == null) {
+            return;
+        }
+        try { // 这里的host说过是DoctorView，看到DoctorView的layout()方法
+            host.layout(0, 0, host.getMeasuredWidth(), host.getMeasuredHeight());
+            mInLayout = false;
+            int numViewsRequestingLayout = mLayoutRequesters.size();
+            if (numViewsRequestingLayout > 0) {
+                // requestLayout() was called during layout.
+                // If no layout-request flags are set on the requesting views, there is no problem.
+                // If some requests are still pending, then we need to clear those flags and do
+                // a full request/measure/layout pass to handle this situation.
+                ArrayList<View> validLayoutRequesters = getValidLayoutRequesters(mLayoutRequesters,
+                        false);
+                if (validLayoutRequesters != null) {
+                    // Set this flag to indicate that any further requests are happening during
+                    // the second pass, which may result in posting those requests to the next
+                    // frame instead
+                    mHandlingLayoutInLayoutRequest = true;
 
+                    // Process fresh layout requests, then measure and layout
+                    int numValidRequests = validLayoutRequesters.size();
+                    for (int i = 0; i < numValidRequests; ++i) {
+                        final View view = validLayoutRequesters.get(i);
+                        Log.w("View", "requestLayout() improperly called by " + view +
+                                " during layout: running second layout pass");
+                        view.requestLayout();
+                    }
+                    measureHierarchy(host, lp, mView.getContext().getResources(),
+                            desiredWindowWidth, desiredWindowHeight);
+                    mInLayout = true;
+                    host.layout(0, 0, host.getMeasuredWidth(), host.getMeasuredHeight());
 
+                    mHandlingLayoutInLayoutRequest = false;
 
+                    // Check the valid requests again, this time without checking/clearing the
+                    // layout flags, since requests happening during the second pass get noop'd
+                    validLayoutRequesters = getValidLayoutRequesters(mLayoutRequesters, true);
+                    if (validLayoutRequesters != null) {
+                        final ArrayList<View> finalRequesters = validLayoutRequesters;
+                        // Post second-pass requests to the next frame
+                        getRunQueue().post(new Runnable() {
+                            @Override
+                            public void run() {
+                                int numValidRequests = finalRequesters.size();
+                                for (int i = 0; i < numValidRequests; ++i) {
+                                    final View view = finalRequesters.get(i);
+                                    Log.w("View", "requestLayout() improperly called by " + view +
+                                            " during second layout pass: posting in next frame");
+                                    view.requestLayout();
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        } finally {
+            Trace.traceEnd(Trace.TRACE_TAG_VIEW);
+        }
+        mInLayout = false;
+    }
+```
+DecorView的onLayout()方法
+```
+protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (mApplyFloatingVerticalInsets) { //若有垂直方向的偏移
+            offsetTopAndBottom(mFloatingInsets.top);
+        }
+        if (mApplyFloatingHorizontalInsets) {//水平方向的偏移
+            offsetLeftAndRight(mFloatingInsets.left);
+        }
+        updateElevation(); //更新阴影设置
+        mAllowUpdateElevation = true;
 
+        if (changed
+                && (mResizeMode == RESIZE_MODE_DOCKED_DIVIDER
+                    || mDrawLegacyNavigationBarBackground)) {
+            getViewRootImpl().requestInvalidateRootRenderNode();
+        }
+    }
+```
+DecorView的有super.onLayout(),会先执行父类的OnLayout(),先看到FrameLayout的onLayout()方法。在FrameLayout#onLayout()会间接调用下面这个方法：
+```
+void layoutChildren(int left, int top, int right, int bottom, boolean forceLeftGravity) {
+        final int count = getChildCount(); // 获取子View的数量。
+        // 计算padding值
+        final int parentLeft = getPaddingLeftWithForeground();
+        final int parentRight = right - left - getPaddingRightWithForeground();
+        final int parentTop = getPaddingTopWithForeground();
+        final int parentBottom = bottom - top - getPaddingBottomWithForeground();
+
+        for (int i = 0; i < count; i++) {
+            final View child = getChildAt(i);
+            if (child.getVisibility() != GONE) {
+                final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+                final int width = child.getMeasuredWidth();
+                final int height = child.getMeasuredHeight();
+                int childLeft;
+                int childTop;
+
+                int gravity = lp.gravity;
+                if (gravity == -1) {
+                    gravity = DEFAULT_CHILD_GRAVITY;
+                }
+                final int layoutDirection = getLayoutDirection();
+                final int absoluteGravity = Gravity.getAbsoluteGravity(gravity, layoutDirection);
+                final int verticalGravity = gravity & Gravity.VERTICAL_GRAVITY_MASK;
+                // 根据方向子View的实际边界,上下左右实际的位置
+                switch (absoluteGravity & Gravity.HORIZONTAL_GRAVITY_MASK) {
+                    case Gravity.CENTER_HORIZONTAL: // 水平居中
+                        childLeft = parentLeft + (parentRight - parentLeft - width) / 2 +
+                        lp.leftMargin - lp.rightMargin;
+                        break;
+                    case Gravity.RIGHT: // 居右
+                        if (!forceLeftGravity) {
+                            childLeft = parentRight - width - lp.rightMargin;
+                            break;
+                        }
+                    case Gravity.LEFT: // 默认居左
+                    default:
+                        childLeft = parentLeft + lp.leftMargin;
+                }
+                switch (verticalGravity) {
+                    case Gravity.TOP: // 顶部
+                        childTop = parentTop + lp.topMargin;
+                        break;
+                    case Gravity.CENTER_VERTICAL: //垂直居中
+                        childTop = parentTop + (parentBottom - parentTop - height) / 2 +
+                        lp.topMargin - lp.bottomMargin;
+                        break;
+                    case Gravity.BOTTOM: // 底部
+                        childTop = parentBottom - height - lp.bottomMargin;
+                        break;
+                    default:  // 默认顶部
+                        childTop = parentTop + lp.topMargin;
+                }
+                // 调用子View的layout方法
+                child.layout(childLeft, childTop, childLeft + width, childTop + height);
+            }
+        }
+    }
+```
+FrameLayout#onLayout()会对子view分别根据它们的padding、方向计算它们的实际边界，然后调动View自身的layout方法。View#layout()方法如下:
+```
+ public void layout(int l, int t, int r, int b) {
+        if ((mPrivateFlags3 & PFLAG3_MEASURE_NEEDED_BEFORE_LAYOUT) != 0) { //先判断是否测量完毕，否则会先去执行测量
+            onMeasure(mOldWidthMeasureSpec, mOldHeightMeasureSpec);
+            mPrivateFlags3 &= ~PFLAG3_MEASURE_NEEDED_BEFORE_LAYOUT;
+        }
+        int oldL = mLeft;
+        int oldT = mTop;
+        int oldB = mBottom;
+        int oldR = mRight;
+        boolean changed = isLayoutModeOptical(mParent) ? // 是否为ViewGroup并且使用LAYOUT_MODE_OPTICAL_BOUNDS的布局模式
+                setOpticalFrame(l, t, r, b) : setFrame(l, t, r, b);
+        if (changed || (mPrivateFlags & PFLAG_LAYOUT_REQUIRED) == PFLAG_LAYOUT_REQUIRED) {
+            onLayout(changed, l, t, r, b);// 触发回调，也就是自定义View中会重写的onLayout()方法
+            if (shouldDrawRoundScrollbar()) { //是否绘制在圆形移动设备上
+                if(mRoundScrollbarRenderer == null) {
+                    mRoundScrollbarRenderer = new RoundScrollbarRenderer(this);
+                }
+            } else {
+                mRoundScrollbarRenderer = null;
+            }
+            mPrivateFlags &= ~PFLAG_LAYOUT_REQUIRED;
+            ListenerInfo li = mListenerInfo;
+            if (li != null && li.mOnLayoutChangeListeners != null) {
+                ArrayList<OnLayoutChangeListener> listenersCopy =
+                        (ArrayList<OnLayoutChangeListener>)li.mOnLayoutChangeListeners.clone();
+                int numListeners = listenersCopy.size();
+                for (int i = 0; i < numListeners; ++i) {
+                    listenersCopy.get(i).onLayoutChange(this, l, t, r, b, oldL, oldT, oldR, oldB); // 触发另一个回调onLayoutChange()
+                }
+            }
+        }
+        final boolean wasLayoutValid = isLayoutValid();
+        mPrivateFlags &= ~PFLAG_FORCE_LAYOUT;
+        mPrivateFlags3 |= PFLAG3_IS_LAID_OUT;
+
+        if (!wasLayoutValid && isFocused()) { // 如果这个view无法布局(已经完成了或者脱离父布局)并且还持有焦点
+            mPrivateFlags &= ~PFLAG_WANTS_FOCUS;
+            if (canTakeFocus()) {
+                clearParentsWantFocus(); //清除父布局焦点
+            } else if (getViewRootImpl() == null || !getViewRootImpl().isInLayout()) {
+                clearFocusInternal(null, /* propagate */ true, /* refocus */ false); // 清除子布局的焦点
+                clearParentsWantFocus(); //清除父布局焦点
+            } else if (!hasParentWantsFocus()) {
+                // original requestFocus was likely on this view directly, so just clear focus
+                clearFocusInternal(null, /* propagate */ true, /* refocus */ false);
+            }          
+        } else if ((mPrivateFlags & PFLAG_WANTS_FOCUS) != 0) {
+            mPrivateFlags &= ~PFLAG_WANTS_FOCUS;
+            View focused = findFocus();
+            if (focused != null) {
+                if (!restoreDefaultFocus() && !hasParentWantsFocus()) {
+                    // Give up and clear focus once we've reached the top-most parent which wants
+                    // focus.
+                    focused.clearFocusInternal(null, /* propagate */ true, /* refocus */ false);
+                }
+            }
+        }
+        if ((mPrivateFlags3 & PFLAG3_NOTIFY_AUTOFILL_ENTER_ON_LAYOUT) != 0) {
+            mPrivateFlags3 &= ~PFLAG3_NOTIFY_AUTOFILL_ENTER_ON_LAYOUT;
+            notifyEnterOrExitForAutoFillIfNeeded(true);
+        }
+        notifyAppearedOrDisappearedForContentCaptureIfNeeded(true);
+    }
+```
+View#layout()做了2个事，1是将回调(onLayout(),onLayoutChange())给每个具体的View，但只有是ViewGroup才有；2是处理焦点问题。此方法结束后，在DecorView的父
+类FrameLayout的onLayout()就结束了，回到DecorView的onLayout()方法，看到上面代码，
 ```
             // By this point all views have been sized and positioned
             // We can compute the transparent area

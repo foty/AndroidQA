@@ -11,8 +11,9 @@
 * DNS
 ... 
 
-#### framwork
+#### frameWork
 * AMS、PMS、WMS
+* ASM插桩，Hook，
 ...
 
 #### 框架原理
@@ -21,6 +22,7 @@
 * Glide
 * Retrofit
 * Leaks
+* liveData
 ...
 
 
