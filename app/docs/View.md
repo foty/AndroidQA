@@ -1186,37 +1186,29 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         try { // 这里的host说过是DoctorView，看到DoctorView的layout()方法
             host.layout(0, 0, host.getMeasuredWidth(), host.getMeasuredHeight());
             mInLayout = false;
+            // 处理在布局过程中，如果有请求重新布局，那么需要执行一个完整的请求测量、布局
             int numViewsRequestingLayout = mLayoutRequesters.size();
             if (numViewsRequestingLayout > 0) {
-                // requestLayout() was called during layout.
-                // If no layout-request flags are set on the requesting views, there is no problem.
-                // If some requests are still pending, then we need to clear those flags and do
-                // a full request/measure/layout pass to handle this situation.
-                ArrayList<View> validLayoutRequesters = getValidLayoutRequesters(mLayoutRequesters,
-                        false);
+                ArrayList<View> validLayoutRequesters = getValidLayoutRequesters(mLayoutRequesters,false);
                 if (validLayoutRequesters != null) {
-                    // Set this flag to indicate that any further requests are happening during
-                    // the second pass, which may result in posting those requests to the next
-                    // frame instead
                     mHandlingLayoutInLayoutRequest = true;
-
-                    // Process fresh layout requests, then measure and layout
+                    // 处理新的布局请求，然后测量和布局
                     int numValidRequests = validLayoutRequesters.size();
                     for (int i = 0; i < numValidRequests; ++i) {
-                        final View view = validLayoutRequesters.get(i);
-                        Log.w("View", "requestLayout() improperly called by " + view +
-                                " during layout: running second layout pass");
-                        view.requestLayout();
+                       final View view = validLayoutRequesters.get(i);
+                       view.requestLayout();
                     }
+                    // 测量
                     measureHierarchy(host, lp, mView.getContext().getResources(),
                             desiredWindowWidth, desiredWindowHeight);
                     mInLayout = true;
+                    //布局
                     host.layout(0, 0, host.getMeasuredWidth(), host.getMeasuredHeight());
-
                     mHandlingLayoutInLayoutRequest = false;
 
                     // Check the valid requests again, this time without checking/clearing the
                     // layout flags, since requests happening during the second pass get noop'd
+                    // 第二次检查有效的重新布局请求
                     validLayoutRequesters = getValidLayoutRequesters(mLayoutRequesters, true);
                     if (validLayoutRequesters != null) {
                         final ArrayList<View> finalRequesters = validLayoutRequesters;
@@ -1227,8 +1219,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                                 int numValidRequests = finalRequesters.size();
                                 for (int i = 0; i < numValidRequests; ++i) {
                                     final View view = finalRequesters.get(i);
-                                    Log.w("View", "requestLayout() improperly called by " + view +
-                                            " during second layout pass: posting in next frame");
+                                    // 重新布局
                                     view.requestLayout();
                                 }
                             }
@@ -1262,7 +1253,7 @@ protected void onLayout(boolean changed, int left, int top, int right, int botto
         }
     }
 ```
-DecorView的有super.onLayout(),会先执行父类的OnLayout(),先看到FrameLayout的onLayout()方法。在FrameLayout#onLayout()会间接调用下面这个方法：
+DecorView的有super.onLayout(),会先执行父类的OnLayout(),看到FrameLayout的onLayout()方法。在FrameLayout#onLayout()会间接调用下面这个方法：
 ```
 void layoutChildren(int left, int top, int right, int bottom, boolean forceLeftGravity) {
         final int count = getChildCount(); // 获取子View的数量。
@@ -1376,8 +1367,6 @@ FrameLayout#onLayout()会对子view分别根据它们的padding、方向计算�
             View focused = findFocus();
             if (focused != null) {
                 if (!restoreDefaultFocus() && !hasParentWantsFocus()) {
-                    // Give up and clear focus once we've reached the top-most parent which wants
-                    // focus.
                     focused.clearFocusInternal(null, /* propagate */ true, /* refocus */ false);
                 }
             }
@@ -1390,7 +1379,7 @@ FrameLayout#onLayout()会对子view分别根据它们的padding、方向计算�
     }
 ```
 View#layout()做了2个事，1是将回调(onLayout(),onLayoutChange())给每个具体的View，但只有是ViewGroup才有；2是处理焦点问题。此方法结束后，在DecorView的父
-类FrameLayout的onLayout()就结束了，回到DecorView的onLayout()方法，看到上面代码，
+类FrameLayout的onLayout()就结束了，回到DecorView的onLayout()方法，设置垂直，水平方向偏移等。随后继续回到ViewRootImpl#performLayout()。
 ```
             // By this point all views have been sized and positioned
             // We can compute the transparent area
