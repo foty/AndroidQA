@@ -291,7 +291,6 @@ PhoneWindow#setContentView(),最终或调用下面方法：
 * DecorView 继承FrameLayout，是所有视图的根view。它的inflate逻辑取根据系统主题样式由系统创建。它有个id为`android.R.id.content`的子View。
 * id为android.R.id.content的View(mContentParent/contentView,在不同类中有不同的名称) DecorView中的一个子view，实质也是一个FrameLayout，在构建时可能
 会被替换为ContentFrameLayout(也是继承FrameLayout)，但id不会被改变。开发中为activity设置的ContentView，就是它的子View。
-
 subDecor添加完mContentParent后，一直返回到最开始地方，也就是AppCompatDelegateImpl#setContentView()中的ensureSubDecor(),再贴一遍代码：
 ```text
     public void setContentView(View v) {
@@ -350,16 +349,17 @@ tvHello是一个TextView，它的父布局是一个ConstraintLayout。再往上�
 
 View的绘制关键就3部分  
  onMeasure()  
- onSizeChanged()  
  onLayout()  
+ onSizeChanged()  
  onDraw()  
+ 
+ 
 
 ##### View的绘制
 Activity的onCreate()方法结束，进入到onResume()。但是在这之前在ActivityThread会先执行handleResumeActivity():
 ```text
  public void handleResumeActivity(IBinder token, boolean finalStateRequest, boolean isForward,
             String reason) {
-            
         // 省略代码。。。
         
         if (r.window == null && !a.mFinished && willBeVisible) {
@@ -423,14 +423,11 @@ public void setView(View view, WindowManager.LayoutParams attrs, View panelParen
                 mView = view;
                 //省略代码。。。。
                 
-                // Schedule the first layout -before- adding to the window
-                // manager, to make sure we do the relayout before receiving
-                // any other events from the system.
                 requestLayout(); // 关注这一句即可。
                 InputChannel inputChannel = null;
                 // 。。。省略代码
             }
-            。。。
+            //。。。
         }
         。。。省略代码
 }           
@@ -534,14 +531,11 @@ checkThread()就是检查当前线程是否是`original thread`,否则会抛出�
                 desiredWindowHeight = size.y;
             } else if (lp.width == ViewGroup.LayoutParams.WRAP_CONTENT
                     || lp.height == ViewGroup.LayoutParams.WRAP_CONTENT) { // 如果view的LayoutParams是WRAP_CONTENT，则使用屏幕大小
-                // For wrap content, we have to remeasure later on anyways. Use size consistent with
-                // below so we get best use of the measure cache.
+                
                 desiredWindowWidth = dipToPx(config.screenWidthDp); 
                 desiredWindowHeight = dipToPx(config.screenHeightDp);
             } else {
-                // After addToDisplay, the frame contains the frameHint from window manager, which
-                // for most windows is going to be the same size as the result of relayoutWindow.
-                // Using this here allows us to avoid remeasuring after relayoutWindow
+               
                 desiredWindowWidth = frame.width();  // 否则使用上次保存的大小
                 desiredWindowHeight = frame.height();
             }
@@ -761,24 +755,21 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
 总体上看`mView.measure(*,*)`这个方法主要还是做优化工作(一些详细看上面注释)，特别是针对测量规格，其中很重要的一点就是回触发onMeasure()回调。写过自定义View的
 都知道，这是重要一环。把测量这一步骤交给开发者自己去决定。  
 下面回到ViewRootImpl#measureHierarchy()方法，也就是接着执行完`performMeasure()`之后，再次判断测量结果是否是最后，最后返回表示窗口是否发生变化的boolean
-结果。performMeasure()方法结束，流程重新回到performTraversals()
+结果。performMeasure()方法结束，流程重新回到performTraversals()中，接着 measureHierarchy()往下：
 ```
-   
        // ...衔接 measureHierarchy()
        if (collectViewAttributes()) { // 保存View的属性
             params = lp;
-        }
+       }
         if (mAttachInfo.mForceReportNewAttributes) {
             mAttachInfo.mForceReportNewAttributes = false;
             params = lp;
         }
-
         if (mFirst || mAttachInfo.mViewVisibilityChanged) { // 如果是第一次绘制，或者view的可见状态发生变化，需要重新调整布局属性
             mAttachInfo.mViewVisibilityChanged = false;
             int resizeMode = mSoftInputMode &
                     WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST;
-            // If we are in auto resize mode, then we need to determine
-            // what mode to use now.
+                    
             // 如果我们处于自动调整大小模式，那么我们需要确定现在使用什么模式,重新调整布局参数。
             if (resizeMode == WindowManager.LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED) {
                 final int N = mAttachInfo.mScrollContainers.size();
@@ -802,19 +793,14 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         if (mApplyInsetsRequested) {// 是否接受重新测量请求，一般发生绘制时mApplyInsetsRequested的值都是true，
             dispatchApplyInsets(host); //分发请求，mApplyInsetsRequested值会重新等于false。
             if (mLayoutRequested) {
-                // Short-circuit catching a new layout request here, so
-                // we don't need to go through two layout passes when things
-                // change due to fitting system windows, which can happen a lot.
                 windowSizeMayChange |= measureHierarchy(host, lp,  //优化布局，前面跟踪分析过
+                
                         mView.getContext().getResources(),
                         desiredWindowWidth, desiredWindowHeight); 
             }
         }
 
         if (layoutRequested) {
-            // Clear this now, so that if anything requests a layout in the
-            // rest of this function we will catch it and re-run a full
-            // layout pass.
             mLayoutRequested = false;
         }
         boolean windowShouldResize = layoutRequested && windowSizeMayChange  // 窗口是否需要重新设置大小
@@ -830,9 +816,6 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         // bounds.
         windowShouldResize |= mActivityRelaunched; //可能activity刚刚启动，需要重新获取一下，保证最新
 
-        // Determine whether to compute insets.
-        // If there are no inset listeners remaining then we may still need to compute
-        // insets in case the old insets were non-empty and must be reset.
         final boolean computesInternalInsets =  // 是否有内部计算监听器
                 mAttachInfo.mTreeObserver.hasComputeInternalInsetsListeners()
                 || mAttachInfo.mHasNonEmptyGivenInternalInsets;
@@ -870,7 +853,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                 || mForceNextWindowRelayout) {
             mForceNextWindowRelayout = false;
 
-            if (isViewVisible) {
+            if (isViewVisible) { //如果这个View是可见的，
                 // If this window is giving internal insets to the window
                 // manager, and it is being added or changing its visibility,
                 // then we want to first give the window manager "fake"
@@ -911,6 +894,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                 // WindowManagerService has reported back a frame from a configuration not yet
                 // handled by the client. In this case, we need to accept the configuration so we
                 // do not lay out and draw with the wrong configuration.
+                
                 // 与之前保存的测量大小比较
                 if (!mPendingMergedConfiguration.equals(mLastReportedMergedConfiguration)) {
                     performConfigurationChange(mPendingMergedConfiguration, !mFirst,INVALID_DISPLAY /* same display */);
@@ -953,21 +937,14 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                 }
 
                 if (surfaceCreated) { // 创建surface，用来重新绘制
-                    // If we are creating a new surface, then we need to
-                    // completely redraw it.
                     mFullRedrawNeeded = true;
                     mPreviousTransparentRegion.setEmpty();
 
-                    // Only initialize up-front if transparent regions are not
-                    // requested, otherwise defer to see if the entire window
-                    // will be transparent
                     if (mAttachInfo.mThreadedRenderer != null) { // 预初始化
                         try {
                             hwInitialized = mAttachInfo.mThreadedRenderer.initialize(mSurface);
                             if (hwInitialized && (host.mPrivateFlags
                                             & View.PFLAG_REQUEST_TRANSPARENT_REGIONS) == 0) {
-                                // Don't pre-allocate if transparent regions
-                                // are requested as they may not be needed
                                 mAttachInfo.mThreadedRenderer.allocateBuffers();
                             }
                         } catch (OutOfResourcesException e) {
@@ -1009,7 +986,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                         // Note that frame size change doesn't always imply surface size change (eg.
                         // drag resizing uses fullscreen surface), need to check surfaceSizeChanged
                         // flag from WindowManager.
-                        mAttachInfo.mThreadedRenderer.updateSurface(mSurface);
+                        mAttachInfo.mThreadedRenderer.updateSurface(mSurface); // 更新
                     } catch (OutOfResourcesException e) {
                         handleOutOfResourcesException(e);
                         return;
@@ -1171,10 +1148,34 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                 || mAttachInfo.mRecomputeGlobalAttributes;
         if (didLayout) {
             performLayout(lp, mWidth, mHeight); // 关键点之一，会触发onLayout()的回调。
-          // 。。省略代码。。
+            // 。。省略代码。。
+            // 至此，所有视图的大小和位置都已经确定,可以开始计算透明区域
+            if ((host.mPrivateFlags & View.PFLAG_REQUEST_TRANSPARENT_REGIONS) != 0) {
+               // start out transparent
+               host.getLocationInWindow(mTmpLocation); // 计算透明区域位置
+               mTransparentRegion.set(mTmpLocation[0], mTmpLocation[1],
+                  mTmpLocation[0] + host.mRight - host.mLeft,
+                  mTmpLocation[1] + host.mBottom - host.mTop);
+               
+               // 获取透明区域   
+               host.gatherTransparentRegion(mTransparentRegion);
+               if (mTranslator != null) { // 设置到屏幕上
+                  mTranslator.translateRegionInWindowToScreen(mTransparentRegion);
+               }
+               if (!mTransparentRegion.equals(mPreviousTransparentRegion)) { // 实际设置的透明区域与预估透明区域存在误差
+                   mPreviousTransparentRegion.set(mTransparentRegion);
+                   mFullRedrawNeeded = true;  // 重新绘制
+                   // reconfigure window manager 重新配置window管理器
+                   try {
+                       mWindowSession.setTransparentRegion(mWindow, mTransparentRegion);
+                   } catch (RemoteException e) {
+                   }
+               }
+            }
         }    
 ```
-转到performLayout()方法:
+第二部分(从方法最开始到measureHierarchy()归为第一部分：主要内容就是测量)主要是对第一部分测量结果确认校准，利用底层创建surface，准备绘制线程，执行layout等操
+作。要看具体的布局流程，到performLayout()方法:
 ```
     private void performLayout(WindowManager.LayoutParams lp, int desiredWindowWidth,int desiredWindowHeight) {
         mScrollMayChange = true;
@@ -1379,182 +1380,252 @@ FrameLayout#onLayout()会对子view分别根据它们的padding、方向计算�
     }
 ```
 View#layout()做了2个事，1是将回调(onLayout(),onLayoutChange())给每个具体的View，但只有是ViewGroup才有；2是处理焦点问题。此方法结束后，在DecorView的父
-类FrameLayout的onLayout()就结束了，回到DecorView的onLayout()方法，设置垂直，水平方向偏移等。随后继续回到ViewRootImpl#performLayout()。
+类FrameLayout的onLayout()就结束了，回到DecorView的onLayout()方法，设置垂直，水平方向偏移等。随后继续回到ViewRootImpl#performLayout()。(部分代码在方法
+中已经添加注释说明，可看到performLayout()方法)。整个performLayout()方法在执行完onLayout()的逻辑，接着看是否有布局请求需要处理，有的话需要测量，布局等一套
+完整流程。   
+ViewRootImpl#performLayout()方法结束，流程又回到performTraversals(),前面分了2个部分，第一部分是测量，第二部分是校准以及布局，现在看第三部分：
 ```
-            // By this point all views have been sized and positioned
-            // We can compute the transparent area
-            if ((host.mPrivateFlags & View.PFLAG_REQUEST_TRANSPARENT_REGIONS) != 0) {
-                // start out transparent
-                // TODO: AVOID THAT CALL BY CACHING THE RESULT?
-                host.getLocationInWindow(mTmpLocation);
-                mTransparentRegion.set(mTmpLocation[0], mTmpLocation[1],
-                        mTmpLocation[0] + host.mRight - host.mLeft,
-                        mTmpLocation[1] + host.mBottom - host.mTop);
+       if (surfaceDestroyed) {
+          notifySurfaceDestroyed();
+       }
+       if (triggerGlobalLayoutListener) { //通知已注册的侦听器发生全局布局
+          mAttachInfo.mRecomputeGlobalAttributes = false;
+          mAttachInfo.mTreeObserver.dispatchOnGlobalLayout();
+       }
+       if (computesInternalInsets) { // 计算内部插图(只一些小控件之类的view)
+          final ViewTreeObserver.InternalInsetsInfo insets = mAttachInfo.mGivenInternalInsets;
+          insets.reset();
 
-                host.gatherTransparentRegion(mTransparentRegion);
-                if (mTranslator != null) {
-                    mTranslator.translateRegionInWindowToScreen(mTransparentRegion);
+          // Compute new insets in place.
+          mAttachInfo.mTreeObserver.dispatchOnComputeInternalInsets(insets);
+          mAttachInfo.mHasNonEmptyGivenInternalInsets = !insets.isEmpty();
+
+          // Tell the window manager.
+          if (insetsPending || !mLastGivenInsets.equals(insets)) {
+              mLastGivenInsets.set(insets);
+
+              // Translate insets to screen coordinates if needed.
+              final Rect contentInsets;
+              final Rect visibleInsets;
+              final Region touchableRegion;
+              if (mTranslator != null) {
+                  contentInsets = mTranslator.getTranslatedContentInsets(insets.contentInsets);
+                  visibleInsets = mTranslator.getTranslatedVisibleInsets(insets.visibleInsets);
+                  touchableRegion = mTranslator.getTranslatedTouchableArea(insets.touchableRegion);
+              } else {
+                  contentInsets = insets.contentInsets;
+                  visibleInsets = insets.visibleInsets;
+                  touchableRegion = insets.touchableRegion;
+              }
+              try {
+                  mWindowSession.setInsets(mWindow, insets.mTouchableInsets,
+                          contentInsets, visibleInsets, touchableRegion);
+              } catch (RemoteException e) {
+              }
+           }
+       }
+
+       if (mFirst) {
+          if (sAlwaysAssignFocus || !isInTouchMode()) {
+          
+             if (mView != null) {
+               if (!mView.hasFocus()) {
+                   mView.restoreDefaultFocus(); // 恢复默认焦点
+               }
+             } else {
+               if (DEBUG_INPUT_RESIZE) {
+                   Log.v(mTag, "First: existing focused view=" + mView.findFocus());
+               }
+             }
+          }
+       } else {
+         View focused = mView.findFocus();
+         if (focused instanceof ViewGroup
+               && ((ViewGroup) focused).getDescendantFocusability()
+                       == ViewGroup.FOCUS_AFTER_DESCENDANTS) {
+                  focused.restoreDefaultFocus();
+               }
+         }
+       }
+       // 可见性是否变化
+       final boolean changedVisibility = (viewVisibilityChanged || mFirst) && isViewVisible;
+       // 是否有窗口焦点
+       final boolean hasWindowFocus = mAttachInfo.mHasWindowFocus && isViewVisible;
+       // 是否恢复焦点
+       final boolean regainedFocus = hasWindowFocus && mLostWindowFocus;
+       if (regainedFocus) {
+          mLostWindowFocus = false;
+       } else if (!hasWindowFocus && mHadWindowFocus) {
+          mLostWindowFocus = true;
+       }
+       if (changedVisibility || regainedFocus) {
+          // Toasts are presented as notifications - don't present them as windows as well
+          boolean isToast = (mWindowAttributes == null) ? false
+           : (mWindowAttributes.type == TYPE_TOAST);
+          if (!isToast) {
+              host.sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
+          }
+       }
+
+       mFirst = false;
+       mWillDrawSoon = false;
+       mNewSurfaceNeeded = false;
+       mActivityRelaunched = false;
+       mViewVisibility = viewVisibility;
+       mHadWindowFocus = hasWindowFocus;
+
+       mImeFocusController.onTraversal(hasWindowFocus, mWindowAttributes);
+
+       // Remember if we must report the next draw.
+       if ((relayoutResult & WindowManagerGlobal.RELAYOUT_RES_FIRST_TIME) != 0) {
+         reportNextDraw(); // 延迟绘制完成
+       }
+       if ((relayoutResult & WindowManagerGlobal.RELAYOUT_RES_BLAST_SYNC) != 0) {
+          reportNextDraw();
+          setUseBLASTSyncTransaction(); // 设置之后，会将缓冲区重定向到事务中
+          mSendNextFrameToWm = true;
+       }
+       
+       // 取消绘制
+       boolean cancelDraw = mAttachInfo.mTreeObserver.dispatchOnPreDraw() || !isViewVisible;
+
+       if (!cancelDraw) {
+          if (mPendingTransitions != null && mPendingTransitions.size() > 0) {
+              for (int i = 0; i < mPendingTransitions.size(); ++i) {
+                  mPendingTransitions.get(i).startChangingAnimations();
+              }
+              mPendingTransitions.clear();
+          }
+          performDraw(); // 触发onDraw()回调
+       } else {
+          if (isViewVisible) {
+             // Try again
+             scheduleTraversals();
+          } else if (mPendingTransitions != null && mPendingTransitions.size() > 0) {
+              for (int i = 0; i < mPendingTransitions.size(); ++i) {
+                 mPendingTransitions.get(i).endChangingAnimations(); // 结束动画
+              }
+              mPendingTransitions.clear();
+          }
+       }
+       if (mAttachInfo.mContentCaptureEvents != null) {
+         notifyContentCatpureEvents();
+       }
+       mIsInTraversal = false;  // 全局变量，遍历结束标志。
+     }
+```
+performTraversals()方法的最后一部分主要是onDraw()，同时draw之前还夹杂了焦点的处理，看到 performDraw()方法：
+```
+    private void performDraw() { // 当前绘制完毕并且不需要下一次绘制，或者view等于null，就返回。不再处理draw。
+        if (mAttachInfo.mDisplayState == Display.STATE_OFF && !mReportNextDraw) {
+            return;
+        } else if (mView == null) {
+            return;
+        }
+
+        final boolean fullRedrawNeeded = mFullRedrawNeeded || mReportNextDraw;
+        mFullRedrawNeeded = false;
+        mIsDrawing = true;
+
+        boolean usingAsyncReport = false;
+        boolean reportNextDraw = mReportNextDraw; // Capture the original value
+        
+        // 渲染线程不为空并且可用的情况下，
+        if (mAttachInfo.mThreadedRenderer != null && mAttachInfo.mThreadedRenderer.isEnabled()) {
+            ArrayList<Runnable> commitCallbacks = mAttachInfo.mTreeObserver
+                    .captureFrameCommitCallbacks();
+            final boolean needFrameCompleteCallback = mNextDrawUseBLASTSyncTransaction ||
+                (commitCallbacks != null && commitCallbacks.size() > 0) ||
+                mReportNextDraw;
+            usingAsyncReport = mReportNextDraw;
+            if (needFrameCompleteCallback) {
+                final Handler handler = mAttachInfo.mHandler;
+                mAttachInfo.mThreadedRenderer.setFrameCompleteCallback((long frameNr) -> {
+                        finishBLASTSync(!mSendNextFrameToWm);
+                        handler.postAtFrontOfQueue(() -> {
+                            if (reportNextDraw) {
+                                // TODO: Use the frame number
+                                pendingDrawFinished();
+                            }
+                            if (commitCallbacks != null) {
+                                for (int i = 0; i < commitCallbacks.size(); i++) {
+                                    commitCallbacks.get(i).run();
+                                }
+                            }
+                        });});
+            }
+        }
+
+        try {
+            if (mNextDrawUseBLASTSyncTransaction) { // 开启事务提交
+                // We aren't prepared to handle overlapping use of mRtBLASTSyncTransaction
+                // so if we are BLAST syncing we make sure the previous draw has
+                // totally finished.
+                if (mAttachInfo.mThreadedRenderer != null) {
+                    mAttachInfo.mThreadedRenderer.pause();
                 }
 
-                if (!mTransparentRegion.equals(mPreviousTransparentRegion)) {
-                    mPreviousTransparentRegion.set(mTransparentRegion);
-                    mFullRedrawNeeded = true;
-                    // reconfigure window manager
-                    try {
-                        mWindowSession.setTransparentRegion(mWindow, mTransparentRegion);
-                    } catch (RemoteException e) {
-                    }
+                mNextReportConsumeBLAST = true;
+                mNextDrawUseBLASTSyncTransaction = false;
+
+                if (mBlastBufferQueue != null) {
+                    mBlastBufferQueue.setNextTransaction(mRtBLASTSyncTransaction);
                 }
             }
-
-            if (DBG) {
-                System.out.println("======================================");
-                System.out.println("performTraversals -- after setFrame");
-                host.debug();
+            boolean canUseAsync = draw(fullRedrawNeeded);
+            if (usingAsyncReport && !canUseAsync) {
+                mAttachInfo.mThreadedRenderer.setFrameCompleteCallback(null);
+                usingAsyncReport = false;
+                finishBLASTSync(true /* apply */);
             }
+        } finally {
+            mIsDrawing = false;
+            Trace.traceEnd(Trace.TRACE_TAG_VIEW);
         }
 
-        if (surfaceDestroyed) {
-            notifySurfaceDestroyed();
+        // For whatever reason we didn't create a HardwareRenderer, end any
+        // hardware animations that are now dangling
+        if (mAttachInfo.mPendingAnimatingRenderNodes != null) {
+            final int count = mAttachInfo.mPendingAnimatingRenderNodes.size();
+            for (int i = 0; i < count; i++) {
+                mAttachInfo.mPendingAnimatingRenderNodes.get(i).endAllAnimators();
+            }
+            mAttachInfo.mPendingAnimatingRenderNodes.clear();
         }
 
-        if (triggerGlobalLayoutListener) {
-            mAttachInfo.mRecomputeGlobalAttributes = false;
-            mAttachInfo.mTreeObserver.dispatchOnGlobalLayout();
-        }
+        if (mReportNextDraw) {
+            mReportNextDraw = false;
 
-        if (computesInternalInsets) {
-            // Clear the original insets.
-            final ViewTreeObserver.InternalInsetsInfo insets = mAttachInfo.mGivenInternalInsets;
-            insets.reset();
-
-            // Compute new insets in place.
-            mAttachInfo.mTreeObserver.dispatchOnComputeInternalInsets(insets);
-            mAttachInfo.mHasNonEmptyGivenInternalInsets = !insets.isEmpty();
-
-            // Tell the window manager.
-            if (insetsPending || !mLastGivenInsets.equals(insets)) {
-                mLastGivenInsets.set(insets);
-
-                // Translate insets to screen coordinates if needed.
-                final Rect contentInsets;
-                final Rect visibleInsets;
-                final Region touchableRegion;
-                if (mTranslator != null) {
-                    contentInsets = mTranslator.getTranslatedContentInsets(insets.contentInsets);
-                    visibleInsets = mTranslator.getTranslatedVisibleInsets(insets.visibleInsets);
-                    touchableRegion = mTranslator.getTranslatedTouchableArea(insets.touchableRegion);
-                } else {
-                    contentInsets = insets.contentInsets;
-                    visibleInsets = insets.visibleInsets;
-                    touchableRegion = insets.touchableRegion;
-                }
-
+            // if we're using multi-thread renderer, wait for the window frame draws
+            if (mWindowDrawCountDown != null) {
                 try {
-                    mWindowSession.setInsets(mWindow, insets.mTouchableInsets,
-                            contentInsets, visibleInsets, touchableRegion);
-                } catch (RemoteException e) {
+                    mWindowDrawCountDown.await();
+                } catch (InterruptedException e) {
+                    Log.e(mTag, "Window redraw count down interrupted!");
                 }
+                mWindowDrawCountDown = null;
+            }
+
+            if (mAttachInfo.mThreadedRenderer != null) {
+                mAttachInfo.mThreadedRenderer.setStopped(mStopped);
+            }
+
+            if (mSurfaceHolder != null && mSurface.isValid()) {
+                SurfaceCallbackHelper sch = new SurfaceCallbackHelper(this::postDrawFinished);
+                SurfaceHolder.Callback callbacks[] = mSurfaceHolder.getCallbacks();
+
+                sch.dispatchSurfaceRedrawNeededAsync(mSurfaceHolder, callbacks);
+            } else if (!usingAsyncReport) {
+                if (mAttachInfo.mThreadedRenderer != null) {
+                    mAttachInfo.mThreadedRenderer.fence();
+                }
+                pendingDrawFinished();
             }
         }
-
-        if (mFirst) {
-            if (sAlwaysAssignFocus || !isInTouchMode()) {
-                // handle first focus request
-                if (DEBUG_INPUT_RESIZE) {
-                    Log.v(mTag, "First: mView.hasFocus()=" + mView.hasFocus());
-                }
-                if (mView != null) {
-                    if (!mView.hasFocus()) {
-                        mView.restoreDefaultFocus();
-                        if (DEBUG_INPUT_RESIZE) {
-                            Log.v(mTag, "First: requested focused view=" + mView.findFocus());
-                        }
-                    } else {
-                        if (DEBUG_INPUT_RESIZE) {
-                            Log.v(mTag, "First: existing focused view=" + mView.findFocus());
-                        }
-                    }
-                }
-            } else {
-                // Some views (like ScrollView) won't hand focus to descendants that aren't within
-                // their viewport. Before layout, there's a good change these views are size 0
-                // which means no children can get focus. After layout, this view now has size, but
-                // is not guaranteed to hand-off focus to a focusable child (specifically, the edge-
-                // case where the child has a size prior to layout and thus won't trigger
-                // focusableViewAvailable).
-                View focused = mView.findFocus();
-                if (focused instanceof ViewGroup
-                        && ((ViewGroup) focused).getDescendantFocusability()
-                                == ViewGroup.FOCUS_AFTER_DESCENDANTS) {
-                    focused.restoreDefaultFocus();
-                }
-            }
+        if (mPerformContentCapture) {
+            performContentCaptureInitialReport();
         }
-
-        final boolean changedVisibility = (viewVisibilityChanged || mFirst) && isViewVisible;
-        final boolean hasWindowFocus = mAttachInfo.mHasWindowFocus && isViewVisible;
-        final boolean regainedFocus = hasWindowFocus && mLostWindowFocus;
-        if (regainedFocus) {
-            mLostWindowFocus = false;
-        } else if (!hasWindowFocus && mHadWindowFocus) {
-            mLostWindowFocus = true;
-        }
-
-        if (changedVisibility || regainedFocus) {
-            // Toasts are presented as notifications - don't present them as windows as well
-            boolean isToast = (mWindowAttributes == null) ? false
-                    : (mWindowAttributes.type == TYPE_TOAST);
-            if (!isToast) {
-                host.sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
-            }
-        }
-
-        mFirst = false;
-        mWillDrawSoon = false;
-        mNewSurfaceNeeded = false;
-        mActivityRelaunched = false;
-        mViewVisibility = viewVisibility;
-        mHadWindowFocus = hasWindowFocus;
-
-        mImeFocusController.onTraversal(hasWindowFocus, mWindowAttributes);
-
-        // Remember if we must report the next draw.
-        if ((relayoutResult & WindowManagerGlobal.RELAYOUT_RES_FIRST_TIME) != 0) {
-            reportNextDraw();
-        }
-        if ((relayoutResult & WindowManagerGlobal.RELAYOUT_RES_BLAST_SYNC) != 0) {
-            reportNextDraw();
-            setUseBLASTSyncTransaction();
-            mSendNextFrameToWm = true;
-        }
-
-        boolean cancelDraw = mAttachInfo.mTreeObserver.dispatchOnPreDraw() || !isViewVisible;
-
-        if (!cancelDraw) {
-            if (mPendingTransitions != null && mPendingTransitions.size() > 0) {
-                for (int i = 0; i < mPendingTransitions.size(); ++i) {
-                    mPendingTransitions.get(i).startChangingAnimations();
-                }
-                mPendingTransitions.clear();
-            }
-            performDraw();
-        } else {
-            if (isViewVisible) {
-                // Try again
-                scheduleTraversals();
-            } else if (mPendingTransitions != null && mPendingTransitions.size() > 0) {
-                for (int i = 0; i < mPendingTransitions.size(); ++i) {
-                    mPendingTransitions.get(i).endChangingAnimations();
-                }
-                mPendingTransitions.clear();
-            }
-        }
-
-        if (mAttachInfo.mContentCaptureEvents != null) {
-            notifyContentCatpureEvents();
-        }
-        mIsInTraversal = false;
     }
 ```
+
  
