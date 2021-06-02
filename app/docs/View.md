@@ -1514,7 +1514,7 @@ ViewRootImpl#performLayout()方法结束，流程又回到performTraversals(),�
        mIsInTraversal = false;  // 全局变量，遍历结束标志。
      }
 ```
-performTraversals()方法的最后一部分主要是onDraw()，同时draw之前还夹杂了焦点的处理，看到 performDraw()方法：
+performTraversals()方法的最后一部分主要是onDraw()，同时draw之前还夹杂了焦点的处理。看到 performDraw()方法：
 ```
     private void performDraw() { // 当前绘制完毕并且不需要下一次绘制，或者view等于null，就返回。不再处理draw。
         if (mAttachInfo.mDisplayState == Display.STATE_OFF && !mReportNextDraw) {
@@ -1525,12 +1525,12 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
 
         final boolean fullRedrawNeeded = mFullRedrawNeeded || mReportNextDraw;
         mFullRedrawNeeded = false;
+        // 正在绘制标志。
         mIsDrawing = true;
-
         boolean usingAsyncReport = false;
-        boolean reportNextDraw = mReportNextDraw; // Capture the original value
+        boolean reportNextDraw = mReportNextDraw;
         
-        // 渲染线程不为空并且可用的情况下，
+        // 渲染线程不为空并且可用的情况下，获取全局视图树观察者的回调，并且在需要执行的时候，借助handler发送到队列执行。
         if (mAttachInfo.mThreadedRenderer != null && mAttachInfo.mThreadedRenderer.isEnabled()) {
             ArrayList<Runnable> commitCallbacks = mAttachInfo.mTreeObserver
                     .captureFrameCommitCallbacks();
@@ -1557,11 +1557,11 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
         }
 
         try {
-            if (mNextDrawUseBLASTSyncTransaction) { // 开启事务提交
+            if (mNextDrawUseBLASTSyncTransaction) { // 开启事务提交，使用BLAST同步方式
                 // We aren't prepared to handle overlapping use of mRtBLASTSyncTransaction
                 // so if we are BLAST syncing we make sure the previous draw has
                 // totally finished.
-                if (mAttachInfo.mThreadedRenderer != null) {
+                if (mAttachInfo.mThreadedRenderer != null) { // 确保前一个View已经绘制完成
                     mAttachInfo.mThreadedRenderer.pause();
                 }
 
@@ -1572,7 +1572,7 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
                     mBlastBufferQueue.setNextTransaction(mRtBLASTSyncTransaction);
                 }
             }
-            boolean canUseAsync = draw(fullRedrawNeeded);
+            boolean canUseAsync = draw(fullRedrawNeeded); // 关键方法draw()。
             if (usingAsyncReport && !canUseAsync) {
                 mAttachInfo.mThreadedRenderer.setFrameCompleteCallback(null);
                 usingAsyncReport = false;
@@ -1583,8 +1583,7 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
             Trace.traceEnd(Trace.TRACE_TAG_VIEW);
         }
 
-        // For whatever reason we didn't create a HardwareRenderer, end any
-        // hardware animations that are now dangling
+        // 清除相关动画
         if (mAttachInfo.mPendingAnimatingRenderNodes != null) {
             final int count = mAttachInfo.mPendingAnimatingRenderNodes.size();
             for (int i = 0; i < count; i++) {
@@ -1593,10 +1592,10 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
             mAttachInfo.mPendingAnimatingRenderNodes.clear();
         }
 
-        if (mReportNextDraw) {
+        if (mReportNextDraw) {//
             mReportNextDraw = false;
 
-            // if we're using multi-thread renderer, wait for the window frame draws
+            // 如果使用多线程渲染器，那么等待窗口框架绘制
             if (mWindowDrawCountDown != null) {
                 try {
                     mWindowDrawCountDown.await();
@@ -1609,7 +1608,8 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
             if (mAttachInfo.mThreadedRenderer != null) {
                 mAttachInfo.mThreadedRenderer.setStopped(mStopped);
             }
-
+            
+            // surface相关
             if (mSurfaceHolder != null && mSurface.isValid()) {
                 SurfaceCallbackHelper sch = new SurfaceCallbackHelper(this::postDrawFinished);
                 SurfaceHolder.Callback callbacks[] = mSurfaceHolder.getCallbacks();
@@ -1619,7 +1619,7 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
                 if (mAttachInfo.mThreadedRenderer != null) {
                     mAttachInfo.mThreadedRenderer.fence();
                 }
-                pendingDrawFinished();
+                pendingDrawFinished(); // 预绘制结束。
             }
         }
         if (mPerformContentCapture) {
@@ -1627,5 +1627,238 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
         }
     }
 ```
+看到performDraw()#draw()方法：
+```
+    private boolean draw(boolean fullRedrawNeeded) {
+        Surface surface = mSurface;
+        if (!surface.isValid()) {
+            return false;
+        }
+        if (!sFirstDrawComplete) { // 第一个view绘制，执行完添加的Runnable，志辉执行一次。
+            synchronized (sFirstDrawHandlers) {
+                sFirstDrawComplete = true;
+                final int count = sFirstDrawHandlers.size();
+                for (int i = 0; i< count; i++) {
+                    mHandler.post(sFirstDrawHandlers.get(i));
+                }
+            }
+        }
+        
+        // 偏移到滚动或者有焦点的位置
+        scrollToRectOrFocus(null, false);
 
+        if (mAttachInfo.mViewScrollChanged) {
+            mAttachInfo.mViewScrollChanged = false;
+            mAttachInfo.mTreeObserver.dispatchOnScrollChanged(); // 分发滚动事件
+        }
+        
+        // 是否执行动画
+        boolean animating = mScroller != null && mScroller.computeScrollOffset();
+        final int curScrollY;
+        if (animating) {
+            curScrollY = mScroller.getCurrY();
+        } else {
+            curScrollY = mScrollY;
+        }
+        if (mCurScrollY != curScrollY) {
+            mCurScrollY = curScrollY;
+            fullRedrawNeeded = true;
+            if (mView instanceof RootViewSurfaceTaker) {
+                ((RootViewSurfaceTaker) mView).onRootViewScrollYChanged(mCurScrollY);
+            }
+        }
+
+        final float appScale = mAttachInfo.mApplicationScale;
+        final boolean scalingRequired = mAttachInfo.mScalingRequired;
+
+        final Rect dirty = mDirty;
+        if (mSurfaceHolder != null) { // 不需要绘制。
+            // The app owns the surface, we won't draw.
+            dirty.setEmpty();
+            if (animating && mScroller != null) {
+                mScroller.abortAnimation();
+            }
+            return false;
+        }
+
+        if (fullRedrawNeeded) {
+            dirty.set(0, 0, (int) (mWidth * appScale + 0.5f), (int) (mHeight * appScale + 0.5f));
+        }
+
+        mAttachInfo.mTreeObserver.dispatchOnDraw();
+
+        int xOffset = -mCanvasOffsetX;
+        int yOffset = -mCanvasOffsetY + curScrollY;
+        final WindowManager.LayoutParams params = mWindowAttributes;
+        final Rect surfaceInsets = params != null ? params.surfaceInsets : null;
+        if (surfaceInsets != null) {
+            xOffset -= surfaceInsets.left;
+            yOffset -= surfaceInsets.top;
+
+            // Offset dirty rect for surface insets.
+            dirty.offset(surfaceInsets.left, surfaceInsets.right);
+        }
+
+        boolean accessibilityFocusDirty = false;
+        final Drawable drawable = mAttachInfo.mAccessibilityFocusDrawable;
+        if (drawable != null) {
+            final Rect bounds = mAttachInfo.mTmpInvalRect;
+            final boolean hasFocus = getAccessibilityFocusedRect(bounds);
+            if (!hasFocus) {
+                bounds.setEmpty();
+            }
+            if (!bounds.equals(drawable.getBounds())) {
+                accessibilityFocusDirty = true;
+            }
+        }
+
+        mAttachInfo.mDrawingTime =
+                mChoreographer.getFrameTimeNanos() / TimeUtils.NANOS_PER_MS;
+
+        boolean useAsyncReport = false;
+        if (!dirty.isEmpty() || mIsAnimating || accessibilityFocusDirty) {
+            if (mAttachInfo.mThreadedRenderer != null && mAttachInfo.mThreadedRenderer.isEnabled()) {
+                // If accessibility focus moved, always invalidate the root.
+                boolean invalidateRoot = accessibilityFocusDirty || mInvalidateRootRequested;
+                mInvalidateRootRequested = false;
+
+                // Draw with hardware renderer. 使用硬件渲染绘制
+                mIsAnimating = false;
+
+                if (mHardwareYOffset != yOffset || mHardwareXOffset != xOffset) {
+                    mHardwareYOffset = yOffset;
+                    mHardwareXOffset = xOffset;
+                    invalidateRoot = true;
+                }
+
+                if (invalidateRoot) { // 执行
+                    mAttachInfo.mThreadedRenderer.invalidateRoot();
+                }
+                dirty.setEmpty();
+
+                // Stage the content drawn size now. It will be transferred to the renderer
+                // shortly before the draw commands get send to the renderer.
+                final boolean updated = updateContentDrawBounds();
+
+                if (mReportNextDraw) {
+                    // report next draw overrides setStopped()
+                    // This value is re-sync'd to the value of mStopped
+                    // in the handling of mReportNextDraw post-draw.
+                    mAttachInfo.mThreadedRenderer.setStopped(false);
+                }
+
+                if (updated) { // 更新窗口
+                    requestDrawWindow();
+                }
+
+                useAsyncReport = true;
+                //硬件渲染绘制。
+                mAttachInfo.mThreadedRenderer.draw(mView, mAttachInfo, this);
+            } else {
+                // If we get here with a disabled & requested hardware renderer, something went
+                // wrong (an invalidate posted right before we destroyed the hardware surface
+                // for instance) so we should just bail out. Locking the surface with software
+                // rendering at this point would lock it forever and prevent hardware renderer
+                // from doing its job when it comes back.
+                // Before we request a new frame we must however attempt to reinitiliaze the
+                // hardware renderer if it's in requested state. This would happen after an
+                // eglTerminate() for instance.
+                if (mAttachInfo.mThreadedRenderer != null && // 如果渲染线程发生异常
+                        !mAttachInfo.mThreadedRenderer.isEnabled() &&
+                        mAttachInfo.mThreadedRenderer.isRequested() &&
+                        mSurface.isValid()) {
+
+                    try { // 重新初始化硬件渲染
+                        mAttachInfo.mThreadedRenderer.initializeIfNeeded(
+                                mWidth, mHeight, mAttachInfo, mSurface, surfaceInsets);
+                    } catch (OutOfResourcesException e) {
+                        handleOutOfResourcesException(e);
+                        return false;
+                    }
+
+                    mFullRedrawNeeded = true;
+                    scheduleTraversals(); // 重新开始绘制。
+                    return false;
+                }
+                if (!drawSoftware(surface, mAttachInfo, xOffset, yOffset, // 软件渲染来绘制。
+                        scalingRequired, dirty, surfaceInsets)) {
+                    return false;
+                }
+            }
+        }
+        if (animating) { // 执行了动画，要重新绘制
+            mFullRedrawNeeded = true;
+            scheduleTraversals();
+        }
+        return useAsyncReport;
+    }
+```
+drawSoftware()方法
+```
+private boolean drawSoftware(Surface surface, AttachInfo attachInfo, int xoff, int yoff,
+            boolean scalingRequired, Rect dirty, Rect surfaceInsets) {
+
+        // Draw with software renderer.
+        final Canvas canvas;
+        
+        // 加回来被设置的偏移量。
+        int dirtyXOffset = xoff;
+        int dirtyYOffset = yoff;
+        if (surfaceInsets != null) {
+            dirtyXOffset += surfaceInsets.left;
+            dirtyYOffset += surfaceInsets.top;
+        }
+        try {
+            dirty.offset(-dirtyXOffset, -dirtyYOffset);
+            final int left = dirty.left;
+            final int top = dirty.top;
+            final int right = dirty.right;
+            final int bottom = dirty.bottom;
+
+            canvas = mSurface.lockCanvas(dirty);
+            // TODO: Do this in native 在底层执行
+            canvas.setDensity(mDensity); // 设置密度值
+        } catch (Surface.OutOfResourcesException e) {
+            handleOutOfResourcesException(e);
+            return false;
+        } catch (IllegalArgumentException e) {
+            Log.e(mTag, "Could not lock surface", e);
+            // Don't assume this is due to out of memory, it could be
+            // something else, and if it is something else then we could
+            // kill stuff (or ourself) for no reason.
+            mLayoutRequested = true;    // ask wm for a new surface next time.
+            return false;
+        } finally {
+            dirty.offset(dirtyXOffset, dirtyYOffset);  // Reset to the original value.
+        }
+        try {
+            if (!canvas.isOpaque() || yoff != 0 || xoff != 0) { // view的背景是透明的，或者xy有偏移，要清除
+                canvas.drawColor(0, PorterDuff.Mode.CLEAR); // 清除目标区域。
+            }
+            dirty.setEmpty();
+            mIsAnimating = false;
+            mView.mPrivateFlags |= View.PFLAG_DRAWN;
+
+            canvas.translate(-xoff, -yoff);
+            if (mTranslator != null) {
+                mTranslator.translateCanvas(canvas);
+            }
+            canvas.setScreenDensity(scalingRequired ? mNoncompatDensity : 0);
+            // 回到DecorView的draw()。方法
+            mView.draw(canvas);
+            drawAccessibilityFocusedDrawableIfNeeded(canvas);
+        } finally {
+            try {
+                surface.unlockCanvasAndPost(canvas); // 释放资源
+            } catch (IllegalArgumentException e) {
+                mLayoutRequested = true;    // ask wm for a new surface next time.
+                return false;
+            }
+        }
+        return true;
+    }
+```
+上面方法主要看到`mView.draw(canvas);`，其他都是一些准备工作什么的。
+```
+```
  
