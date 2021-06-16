@@ -1514,7 +1514,8 @@ ViewRootImpl#performLayout()方法结束，流程又回到performTraversals(),�
        mIsInTraversal = false;  // 全局变量，遍历结束标志。
      }
 ```
-performTraversals()方法的最后一部分主要是onDraw()，同时draw之前还夹杂了焦点的处理。看到 performDraw()方法：
+performTraversals()方法的最后一部分主要是onDraw()，同时draw之前还夹杂了焦点的处理。看到performDraw()方法：   
+ViewRootImpl#performDraw():
 ```
     private void performDraw() { // 当前绘制完毕并且不需要下一次绘制，或者view等于null，就返回。不再处理draw。
         if (mAttachInfo.mDisplayState == Display.STATE_OFF && !mReportNextDraw) {
@@ -1572,7 +1573,7 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
                     mBlastBufferQueue.setNextTransaction(mRtBLASTSyncTransaction);
                 }
             }
-            boolean canUseAsync = draw(fullRedrawNeeded); // 关键方法draw()。
+            boolean canUseAsync = draw(fullRedrawNeeded); // 注意关键方法draw()。
             if (usingAsyncReport && !canUseAsync) {
                 mAttachInfo.mThreadedRenderer.setFrameCompleteCallback(null);
                 usingAsyncReport = false;
@@ -1627,7 +1628,7 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
         }
     }
 ```
-看到performDraw()#draw()方法：
+看到ViewRootImpl#draw()方法:
 ```
     private boolean draw(boolean fullRedrawNeeded) {
         Surface surface = mSurface;
@@ -1684,7 +1685,6 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
         if (fullRedrawNeeded) {
             dirty.set(0, 0, (int) (mWidth * appScale + 0.5f), (int) (mHeight * appScale + 0.5f));
         }
-
         mAttachInfo.mTreeObserver.dispatchOnDraw();
 
         int xOffset = -mCanvasOffsetX;
@@ -1735,22 +1735,18 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
                     mAttachInfo.mThreadedRenderer.invalidateRoot();
                 }
                 dirty.setEmpty();
-
                 // Stage the content drawn size now. It will be transferred to the renderer
                 // shortly before the draw commands get send to the renderer.
                 final boolean updated = updateContentDrawBounds();
-
                 if (mReportNextDraw) {
                     // report next draw overrides setStopped()
                     // This value is re-sync'd to the value of mStopped
                     // in the handling of mReportNextDraw post-draw.
                     mAttachInfo.mThreadedRenderer.setStopped(false);
                 }
-
                 if (updated) { // 更新窗口
                     requestDrawWindow();
                 }
-
                 useAsyncReport = true;
                 //硬件渲染绘制。
                 mAttachInfo.mThreadedRenderer.draw(mView, mAttachInfo, this);
@@ -1793,7 +1789,7 @@ performTraversals()方法的最后一部分主要是onDraw()，同时draw之前�
         return useAsyncReport;
     }
 ```
-drawSoftware()方法
+ViewRootImpl#drawSoftware()方法:
 ```
 private boolean drawSoftware(Surface surface, AttachInfo attachInfo, int xoff, int yoff,
             boolean scalingRequired, Rect dirty, Rect surfaceInsets) {
@@ -1844,7 +1840,7 @@ private boolean drawSoftware(Surface surface, AttachInfo attachInfo, int xoff, i
                 mTranslator.translateCanvas(canvas);
             }
             canvas.setScreenDensity(scalingRequired ? mNoncompatDensity : 0);
-            // 回到DecorView的draw()。方法
+            // 回到DecorView的draw()方法,关键点
             mView.draw(canvas);
             drawAccessibilityFocusedDrawableIfNeeded(canvas);
         } finally {
@@ -1858,7 +1854,245 @@ private boolean drawSoftware(Surface surface, AttachInfo attachInfo, int xoff, i
         return true;
     }
 ```
-上面方法主要看到`mView.draw(canvas);`，其他都是一些准备工作什么的。
+上面方法主要看`mView.draw(canvas);`，其他都是一些准备工作什么的。还是要强调一下，这里的mView是指DecorView的实例，在DecorView的draw(canvas)方法有super
+的调用，而DecorView的直接父类FrameLayout是没有这个方法，ViewGroup中也是没有这个方法，而是在View中有这个方法，所以要看到View的中的这个方法：
 ```
+// DecorView中的简单draw()方法
+    public void draw(Canvas canvas) {
+        super.draw(canvas);
+
+        if (mMenuBackground != null) {
+            mMenuBackground.draw(canvas);
+        }
+    }
 ```
+View中的draw()方法:
+```
+    public void draw(Canvas canvas) {
+        final int privateFlags = mPrivateFlags;
+        mPrivateFlags = (privateFlags & ~PFLAG_DIRTY_MASK) | PFLAG_DRAWN; // 先处理标志位，表示在绘制这个view了。
+        /*
+         * Draw traversal performs several drawing steps which must be executed
+         * in the appropriate order:
+         *      1. Draw the background  
+         *      2. If necessary, save the canvas' layers to prepare for fading
+         *      3. Draw view's content
+         *      4. Draw children
+         *      5. If necessary, draw the fading edges and restore layers
+         *      6. Draw decorations (scrollbars for instance)
+         *      7. If necessary, draw the default focus highlight
+         */
+
+        // Step 1, draw the background, if needed
+        int saveCount;
+        drawBackground(canvas);  // 画背景
+
+        // skip step 2 & 5 if possible (common case)
+        final int viewFlags = mViewFlags;
+        boolean horizontalEdges = (viewFlags & FADING_EDGE_HORIZONTAL) != 0;
+        boolean verticalEdges = (viewFlags & FADING_EDGE_VERTICAL) != 0;
+        
+        if (!verticalEdges && !horizontalEdges) { // 如果不需要保存(不需要褪色)，直接按照步骤即可，这种绘制速度是比较快的。
+            // Step 3, draw the content
+            onDraw(canvas); // 触发onDraw()的回调
+
+            // Step 4, draw the children
+            dispatchDraw(canvas);
+
+            drawAutofilledHighlight(canvas);
+
+            // Overlay is part of the content and draws beneath Foreground
+            if (mOverlay != null && !mOverlay.isEmpty()) {
+                mOverlay.getOverlayView().dispatchDraw(canvas);
+            }
+
+            // Step 6, draw decorations (foreground, scrollbars)
+            onDrawForeground(canvas);
+
+            // Step 7, draw the default focus highlight
+            drawDefaultFocusHighlight(canvas);
+
+            if (isShowingLayoutBounds()) {
+                debugDrawFocus(canvas);
+            }
+            return;
+        }
+        
+        // 同样也是绘制，相对速度会慢一点
+        boolean drawTop = false;
+        boolean drawBottom = false;
+        boolean drawLeft = false;
+        boolean drawRight = false;
+
+        float topFadeStrength = 0.0f;
+        float bottomFadeStrength = 0.0f;
+        float leftFadeStrength = 0.0f;
+        float rightFadeStrength = 0.0f;
+
+        // Step 2, save the canvas' layers  // 保存画布
+        int paddingLeft = mPaddingLeft;
+
+        final boolean offsetRequired = isPaddingOffsetRequired();
+        if (offsetRequired) {
+            paddingLeft += getLeftPaddingOffset();
+        }
+        int left = mScrollX + paddingLeft;
+        int right = left + mRight - mLeft - mPaddingRight - paddingLeft;
+        int top = mScrollY + getFadeTop(offsetRequired);
+        int bottom = top + getFadeHeight(offsetRequired);
+
+        if (offsetRequired) {
+            right += getRightPaddingOffset();
+            bottom += getBottomPaddingOffset();
+        }
+        final ScrollabilityCache scrollabilityCache = mScrollCache;
+        final float fadeHeight = scrollabilityCache.fadingEdgeLength;
+        int length = (int) fadeHeight;
+
+        // clip the fade length if top and bottom fades overlap
+        // overlapping fades produce odd-looking artifacts
+        if (verticalEdges && (top + length > bottom - length)) { // 裁剪垂直方向
+            length = (bottom - top) / 2;
+        }
+
+        // also clip horizontal fades if necessary
+        if (horizontalEdges && (left + length > right - length)) { // 裁剪水平方向
+            length = (right - left) / 2;
+        }
+
+        if (verticalEdges) {
+            topFadeStrength = Math.max(0.0f, Math.min(1.0f, getTopFadingEdgeStrength()));
+            drawTop = topFadeStrength * fadeHeight > 1.0f;
+            bottomFadeStrength = Math.max(0.0f, Math.min(1.0f, getBottomFadingEdgeStrength()));
+            drawBottom = bottomFadeStrength * fadeHeight > 1.0f;
+        }
+        if (horizontalEdges) {
+            leftFadeStrength = Math.max(0.0f, Math.min(1.0f, getLeftFadingEdgeStrength()));
+            drawLeft = leftFadeStrength * fadeHeight > 1.0f;
+            rightFadeStrength = Math.max(0.0f, Math.min(1.0f, getRightFadingEdgeStrength()));
+            drawRight = rightFadeStrength * fadeHeight > 1.0f;
+        }
+
+        saveCount = canvas.getSaveCount(); // 保存
+        int topSaveCount = -1;
+        int bottomSaveCount = -1;
+        int leftSaveCount = -1;
+        int rightSaveCount = -1;
+        
+        int solidColor = getSolidColor();
+        if (solidColor == 0) {
+            if (drawTop) {
+                topSaveCount = canvas.saveUnclippedLayer(left, top, right, top + length);
+            }
+            if (drawBottom) {
+                bottomSaveCount = canvas.saveUnclippedLayer(left, bottom - length, right, bottom);
+            }
+            if (drawLeft) {
+                leftSaveCount = canvas.saveUnclippedLayer(left, top, left + length, bottom);
+            }
+            if (drawRight) {
+                rightSaveCount = canvas.saveUnclippedLayer(right - length, top, right, bottom);
+            }
+        } else {
+            scrollabilityCache.setFadeColor(solidColor);
+        }
+
+        // Step 3, draw the content
+        onDraw(canvas);
+
+        // Step 4, draw the children
+        dispatchDraw(canvas);
+
+        // Step 5, draw the fade effect and restore layers // 绘制淡出效果和恢复层
+        final Paint p = scrollabilityCache.paint;
+        final Matrix matrix = scrollabilityCache.matrix;
+        final Shader fade = scrollabilityCache.shader;
+
+        // must be restored in the reverse order that they were saved
+        if (drawRight) { // 右边
+            matrix.setScale(1, fadeHeight * rightFadeStrength);
+            matrix.postRotate(90);
+            matrix.postTranslate(right, top);
+            fade.setLocalMatrix(matrix);
+            p.setShader(fade);
+            if (solidColor == 0) {
+                canvas.restoreUnclippedLayer(rightSaveCount, p);
+
+            } else {
+                canvas.drawRect(right - length, top, right, bottom, p);
+            }
+        }
+        if (drawLeft) {
+            matrix.setScale(1, fadeHeight * leftFadeStrength);
+            matrix.postRotate(-90);
+            matrix.postTranslate(left, top);
+            fade.setLocalMatrix(matrix);
+            p.setShader(fade);
+            if (solidColor == 0) {
+                canvas.restoreUnclippedLayer(leftSaveCount, p);
+            } else {
+                canvas.drawRect(left, top, left + length, bottom, p);
+            }
+        }
+        if (drawBottom) {
+            matrix.setScale(1, fadeHeight * bottomFadeStrength);
+            matrix.postRotate(180);
+            matrix.postTranslate(left, bottom);
+            fade.setLocalMatrix(matrix);
+            p.setShader(fade);
+            if (solidColor == 0) {
+                canvas.restoreUnclippedLayer(bottomSaveCount, p);
+            } else {
+                canvas.drawRect(left, bottom - length, right, bottom, p);
+            }
+        }
+        if (drawTop) {
+            matrix.setScale(1, fadeHeight * topFadeStrength);
+            matrix.postTranslate(left, top);
+            fade.setLocalMatrix(matrix);
+            p.setShader(fade);
+            if (solidColor == 0) {
+                canvas.restoreUnclippedLayer(topSaveCount, p);
+            } else {
+                canvas.drawRect(left, top, right, top + length, p);
+            }
+        }
+        canvas.restoreToCount(saveCount);
+        
+        drawAutofilledHighlight(canvas);
+
+        // Overlay is part of the content and draws beneath Foreground
+        if (mOverlay != null && !mOverlay.isEmpty()) {
+            mOverlay.getOverlayView().dispatchDraw(canvas);
+        }
+
+        // Step 6, draw decorations (foreground, scrollbars)
+        onDrawForeground(canvas);
+
+        // Step 7, draw the default focus highlight
+        drawDefaultFocusHighlight(canvas);
+
+        if (isShowingLayoutBounds()) {
+            debugDrawFocus(canvas);
+        }
+    }
+```
+整个方法总结下来就是这么几个步骤：
+* 画背景
+* 如果有必要，保存画布的图层，为褪色做准备
+* 画视图的内容(回调onDraw()方法)
+* 画子view (回调dispatchDraw()，不过这个方法一遍实现的少，像在一些常见类，ViewGroup等有实现)
+* 如果有必要，绘制褪色边缘和恢复层
+* 绘制装饰(例如滚动条)
+* 如果有必要，绘制默认的焦点高亮
+
+View中的draw()走完，回到DecorView的draw()，最后如果mMenuBackground不为空，就绘制这个背景到画布上,DecorView#draw(canvas)方法结束，现在进度回到
+ViewRootImpl#drawSoftware()的最后阶段，执行完一个高亮显示后，释放surface，return true结束。进度来到ViewRootImpl#draw()，如果drawSoftware()期间
+产生异常的会，最终结果是return false。这样也会导致ViewRootImpl#draw()直接退出，而不会执行后面的动画。draw()方法结束，进度来到ViewRootImpl#
+performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`位置，继续执行后面逻辑，performDraw()执行完毕，回到performTraversals()
+,发出绘制完成的消息到整个视图结构。performTraversals()结束。绘制流程结束。   
+
+总结一波view绘制设计的API调用链图：  
+
+
  
