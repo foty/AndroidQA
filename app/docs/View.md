@@ -671,7 +671,8 @@ private boolean measureHierarchy(final View host, final WindowManager.LayoutPara
         return windowSizeMayChange;
     }
 ```
-measureHierarchy()方法更像是做了一个窗口大小优化工作，来保证这个view层级视图是最合适，最舒服的。同时会触发自定义控件中onMeasure()的回调。
+measureHierarchy()方法更像是做了一个窗口大小优化工作，来保证这个view层级视图是最合适，最舒服的。同时会调用到performMeasure()方法，触发自定义控件
+中onMeasure()的回调:
 ```text
  private void performMeasure(int childWidthMeasureSpec, int childHeightMeasureSpec) {
         if (mView == null) {
