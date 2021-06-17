@@ -1,6 +1,7 @@
 #### View
 * 加载(Window,DecorView...)
 * 绘制
+* 常见问题
  
 ##### Window、PhoneWindow、DecorView
 在跟踪ActivityThread启动activity最后阶段的时候就有提到过window，就是在ActivityThread#performLaunchActivity()，看到这段代码：
@@ -355,7 +356,7 @@ View的绘制关键就3部分
  
  
 
-##### View的绘制
+##### View的绘制流程
 Activity的onCreate()方法结束，进入到onResume()。但是在这之前在ActivityThread会先执行handleResumeActivity():
 ```text
  public void handleResumeActivity(IBinder token, boolean finalStateRequest, boolean isForward,
@@ -2097,3 +2098,77 @@ performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`�
 
 
  
+ 
+ 
+ 
+
+##### 测量模式
+测量模式是 MeasureSpec中的一部分。MeasureSpec表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格大小SpecSize。
+测量模式有三种:
+* MeasureSpec.UNSPECIFIED  没有任何约束，可以是想要的任何大小(使用较少)
+* MeasureSpec.EXACTLY      有一个精确的尺寸大小,比如100dp或者设置为match_parent时生效。
+* MeasureSpec.AT_MOST      可以增大到任意大小(尽可能的大),当设置wrap_content时生效。
+
+测量模式在View中与ViewGroup中又是有点区别的。在View中相对比较简单，通过测量规格根据`MeasureSpec.getMode()`API求出mode属于哪种就是哪种。相对ViewGroup
+就要复杂一点点，子view的测量模式会根据具体情况进行相关转换。具体转换关系如下：
+<table>
+	<tr>
+	    <th>模式</th>
+	    <th>子View的宽高情况</th>
+	    <th>转换结果</th>  
+	</tr >
+	<tr >
+	    <td rowspan="3">EXACTLY</td>
+	    <td>精确值</td>
+	    <td>EXACTLY</td>
+	</tr>
+	<tr>
+	    <td>wrap_content</td>
+	    <td>AT_MOST</td>
+	</tr>
+	<tr>
+	    <td>match_parent</td>
+	    <td>EXACTLY</td>
+	</tr>
+	<tr>
+	    <td rowspan="3">AT_MOST</td>
+	    <td>精确值</td>
+	    <td>EXACTLY</td>
+	</tr>
+	<tr>
+	    <td>wrap_content</td>
+	    <td>AT_MOST</td>
+	</tr>
+	<tr>
+	    <td>match_parent</td>
+	    <td>AT_MOST</td>
+	</tr>
+	<tr>
+	    <td rowspan="3">UNSPECIFIED</td>
+	    <td>精确值</td>
+	    <td>EXACTLY</td>
+	</tr>
+	<tr>
+	    <td>wrap_content</td>
+	    <td>UNSPECIFIED</td>
+	</tr>
+	<tr>
+	    <td>match_parent</td>
+	    <td>UNSPECIFIED</td>
+	</tr>
+</table>
+
+由上表可总结一下结论：
+* 当子view有具体的宽高值(比如100px)，测量模式最终都会转换成 EXACTLY。
+* 当为 EXACTLY + match_parent，测量模式不变，依然是 EXACTLY。
+* 当为 EXACTLY + wrap_content，测量模式最终转换成 AT_MOST。
+* 当为 AT_MOST时，除了有具体值，否则都是 AT_MOST。
+* 当为 UNSPECIFIED时，除了有具体值，否则都是 UNSPECIFIED。
+
+##### LayoutParams
+
+##### View的保存与恢复
+
+##### 自定义控件掌握
+
+##### 常见问题
