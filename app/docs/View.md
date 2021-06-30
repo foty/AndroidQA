@@ -1,9 +1,11 @@
 #### View
 * 加载(Window,DecorView...)
 * 绘制
+* 动画
+* 事件分发
 * 常见问题
  
-##### Window、PhoneWindow、DecorView
+##### 1、(加载)Window、PhoneWindow、DecorView
 在跟踪ActivityThread启动activity最后阶段的时候就有提到过window，就是在ActivityThread#performLaunchActivity()，看到这段代码：
 ```html
    Window window = null;
@@ -292,6 +294,7 @@ PhoneWindow#setContentView(),最终或调用下面方法：
 * DecorView 继承FrameLayout，是所有视图的根view。它的inflate逻辑取根据系统主题样式由系统创建。它有个id为`android.R.id.content`的子View。
 * id为android.R.id.content的View(mContentParent/contentView,在不同类中有不同的名称) DecorView中的一个子view，实质也是一个FrameLayout，在构建时可能
 会被替换为ContentFrameLayout(也是继承FrameLayout)，但id不会被改变。开发中为activity设置的ContentView，就是它的子View。
+
 subDecor添加完mContentParent后，一直返回到最开始地方，也就是AppCompatDelegateImpl#setContentView()中的ensureSubDecor(),再贴一遍代码：
 ```text
     public void setContentView(View v) {
@@ -356,7 +359,7 @@ View的绘制关键就3部分
  
  
 
-##### View的绘制流程
+##### 2、View的绘制流程
 Activity的onCreate()方法结束，进入到onResume()。但是在这之前在ActivityThread会先执行handleResumeActivity():
 ```text
  public void handleResumeActivity(IBinder token, boolean finalStateRequest, boolean isForward,
@@ -2095,14 +2098,12 @@ performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`�
 ,发出绘制完成的消息到整个视图结构。performTraversals()结束。绘制流程结束。   
 
 总结一波view绘制设计的API调用链图：  
+[view绘制.jpg]
 
-
- 
- 
  
  
 
-##### 测量模式
+##### 2.1、测量模式
 测量模式是 MeasureSpec中的一部分。MeasureSpec表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格大小SpecSize。
 测量模式有三种:
 * MeasureSpec.UNSPECIFIED  没有任何约束，可以是想要的任何大小(使用较少)
@@ -2165,10 +2166,104 @@ performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`�
 * 当为 AT_MOST时，除了有具体值，否则都是 AT_MOST。
 * 当为 UNSPECIFIED时，除了有具体值，否则都是 UNSPECIFIED。
 
+##### View中的动画
+
+##### View中的事件分发
+
 ##### LayoutParams
+ViewGroup的布局参数基本类，有多个重载方法：
+* LayoutParams(Context c, AttributeSet attrs)：从提供的属性集的参数中提取值和上下文并映射XML属性到这组布局参数
+* LayoutParams(int width, int height)： 使用参数创建一组宽高值。
+* LayoutParams(LayoutParams source)： 会克隆源的宽度和高度值。
+* LayoutParams()
 
 ##### View的保存与恢复
+就是View中的2个API,还包括一个保存的对象SavedState，实现了Parcelable接口。一般将保存内容存放到这个对象里面。
+* Parcelable onSaveInstanceState()
+* void onRestoreInstanceState(Parcelable state)
 
 ##### 自定义控件掌握
 
+
 ##### 常见问题
+* 首次 View的绘制流程是在什么时候触发的？   
+考验api流程了，关键如下：ActivityThread#handleResumeActivity() -> WindowManagerImpl#addView()->
+WindowManagerGlobal#addView() -> ViewRootImpl()setView() -> ViewRootImpl#requestLayout()。  
+所以答案是在 ActivityThread的handleResumeActivity()方法。
+
+* Activity、PhoneWindow、DecorView、ViewRootImpl 的关系？   
+包含关系大概为：Activity[Window->PhoneWindow[DecorView]],而ViewRootImpl可以说是DecorView的管家，继承了ViewParent接口，用来掌管View的各种事
+件，包括 requestLayout、invalidate、dispatchInputEvent等等。
+
+* DecorView 的布局是什么样的？  
+DecorView实际构建的布局是分情况的，具体看到PhoneWindow#generateLayout()方法，根据各种不同情况来选择不一样的布局。但他们都会有一个id为content
+的FrameLayout布局，这个布局是setContentView(R.layout.xx)中的布局的直接父布局。
+
+* setContentView 的流程   
+Activity#setContentView() ->委托AppCompatDelegateImpl#setContentView() -> AppCompatDelegateImpl#ensureSubDecor()准备DecorView ->
+从DecorView找到id为content的布局，将view add进去。
+
+* 说说自定义view的几个构造函数
+
+* ViewGroup是怎么分发绘制的
+
+* onLayout() 和Layout()的区别
+
+* 如何触发重新绘制？  
+调用 API requestLayout()或invalidate。
+
+* requestLayout 和 invalidate 的流程，区别？   
+首先看到View中的requestLayout()方法，如果要触发重新绘制的话:
+```
+    public void requestLayout() {
+        if (mMeasureCache != null) mMeasureCache.clear();
+        if (mAttachInfo != null && mAttachInfo.mViewRequestingLayout == null) {
+            ViewRootImpl viewRoot = getViewRootImpl();
+            
+            //判断是否在layout过程。ViewRootImpl#isInLayout()方法会返回一个boolean值mInLayout。这个值会在进入host.layout()之前设置为true，之
+            // 后设置为false。
+            if (viewRoot != null && viewRoot.isInLayout()) { //如果viewRoot不是空并且viewRoot在layout阶段
+                if (!viewRoot.requestLayoutDuringLayout(this)) { //正在处理layout(),就直接return。
+                    return;
+                }
+            }
+            mAttachInfo.mViewRequestingLayout = this;
+        }
+        
+        // 没有在处理layout，设置flag PFLAG_FORCE_LAYOUT。
+        mPrivateFlags |= PFLAG_FORCE_LAYOUT;
+        mPrivateFlags |= PFLAG_INVALIDATED;
+
+        if (mParent != null && !mParent.isLayoutRequested()) {
+        // mParent会通过调用View#assignParent()对mParent赋值，调用处在ViewRootImpl的setView()中`view.assignParent(this);`
+        // 所以这个mParent就是ViewRootImpl。
+            mParent.requestLayout();  // 调用 ViewRootImpl的requestLayout()
+        }
+        if (mAttachInfo != null && mAttachInfo.mViewRequestingLayout == this) {
+            mAttachInfo.mViewRequestingLayout = null;
+        }
+    }
+```
+
+
+ViewRootImpl的requestLayout流程： scheduleTraversals() -> doTraversal() -> performTraversals()。其中在performTraversals()又有几大重要方法：
+[performMeasure() -- performLayout() - performDraw()]
+
+* invalidate() 和 postInvalidate()的区别?
+
+* LayoutInflate 的流程
+
+* 描述一下getX()、getRawX()、getTranslationX()
+
+* Android中的动画有哪几类，它们的特点和区别是什么
+
+* Interpolator和TypeEvaluator是什么，有什么用
+
+* View刷新机制
+
+
+##### 参考资料
+* <https://blog.csdn.net/huangqili1314/article/details/79824830>
+* <https://blog.csdn.net/qq_30993595/article/details/80931556>
+* <https://www.cnblogs.com/huansky/p/11911549.html>
+* <https://mp.weixin.qq.com/s/wy9V4wXUoEFZ6ekzuLJySQ>
