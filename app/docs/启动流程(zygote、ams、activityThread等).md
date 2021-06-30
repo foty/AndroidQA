@@ -585,3 +585,7 @@ Instrumentation的对象实例，这个完整方法为：
   }
 ``` 
 在Application创建出来后，执行了它的onCreate()方法。
+
+##### 参考资料
+* <https://blog.csdn.net/yanzhenjie1003/article/details/99656633>
+* <https://blog.csdn.net/yiranfeng/article/details/103549872>系列
