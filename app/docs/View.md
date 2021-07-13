@@ -705,7 +705,8 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         // Suppress sign extension for the low bytes 将当前的宽高规格转换后方式生成一个key，用来保存(使用LongSparseLongArray)
         long key = (long) widthMeasureSpec << 32 | (long) heightMeasureSpec & 0xffffffffL;
         if (mMeasureCache == null) mMeasureCache = new LongSparseLongArray(2);
-
+        
+        // 如果调用了requestLayout，forceLayout是为true的，因为会设置flag为PFLAG_FORCE_LAYOUT。
         final boolean forceLayout = (mPrivateFlags & PFLAG_FORCE_LAYOUT) == PFLAG_FORCE_LAYOUT; // 是否需要强制布局。
 
         // Optimize layout by avoiding an extra EXACTLY pass when the view is
@@ -1179,6 +1180,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
             }
         }    
 ```
+
 第二部分(从方法最开始到measureHierarchy()归为第一部分：主要内容就是测量)主要是对第一部分测量结果确认校准，利用底层创建surface，准备绘制线程，执行layout等操
 作。要看具体的布局流程，到performLayout()方法:
 ```
@@ -1189,7 +1191,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         if (host == null) {
             return;
         }
-        try { // 这里的host说过是DoctorView，看到DoctorView的layout()方法
+        try { // 这里的host说过是DoctorView，但是DoctorView没有layout()方法，最终会到View.layout()
             host.layout(0, 0, host.getMeasuredWidth(), host.getMeasuredHeight());
             mInLayout = false;
             // 处理在布局过程中，如果有请求重新布局，那么需要执行一个完整的请求测量、布局
@@ -1239,88 +1241,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         mInLayout = false;
     }
 ```
-DecorView的onLayout()方法
-```
-protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-        super.onLayout(changed, left, top, right, bottom);
-        if (mApplyFloatingVerticalInsets) { //若有垂直方向的偏移
-            offsetTopAndBottom(mFloatingInsets.top);
-        }
-        if (mApplyFloatingHorizontalInsets) {//水平方向的偏移
-            offsetLeftAndRight(mFloatingInsets.left);
-        }
-        updateElevation(); //更新阴影设置
-        mAllowUpdateElevation = true;
-
-        if (changed
-                && (mResizeMode == RESIZE_MODE_DOCKED_DIVIDER
-                    || mDrawLegacyNavigationBarBackground)) {
-            getViewRootImpl().requestInvalidateRootRenderNode();
-        }
-    }
-```
-DecorView的有super.onLayout(),会先执行父类的OnLayout(),看到FrameLayout的onLayout()方法。在FrameLayout#onLayout()会间接调用下面这个方法：
-```
-void layoutChildren(int left, int top, int right, int bottom, boolean forceLeftGravity) {
-        final int count = getChildCount(); // 获取子View的数量。
-        // 计算padding值
-        final int parentLeft = getPaddingLeftWithForeground();
-        final int parentRight = right - left - getPaddingRightWithForeground();
-        final int parentTop = getPaddingTopWithForeground();
-        final int parentBottom = bottom - top - getPaddingBottomWithForeground();
-
-        for (int i = 0; i < count; i++) {
-            final View child = getChildAt(i);
-            if (child.getVisibility() != GONE) {
-                final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-                final int width = child.getMeasuredWidth();
-                final int height = child.getMeasuredHeight();
-                int childLeft;
-                int childTop;
-
-                int gravity = lp.gravity;
-                if (gravity == -1) {
-                    gravity = DEFAULT_CHILD_GRAVITY;
-                }
-                final int layoutDirection = getLayoutDirection();
-                final int absoluteGravity = Gravity.getAbsoluteGravity(gravity, layoutDirection);
-                final int verticalGravity = gravity & Gravity.VERTICAL_GRAVITY_MASK;
-                // 根据方向子View的实际边界,上下左右实际的位置
-                switch (absoluteGravity & Gravity.HORIZONTAL_GRAVITY_MASK) {
-                    case Gravity.CENTER_HORIZONTAL: // 水平居中
-                        childLeft = parentLeft + (parentRight - parentLeft - width) / 2 +
-                        lp.leftMargin - lp.rightMargin;
-                        break;
-                    case Gravity.RIGHT: // 居右
-                        if (!forceLeftGravity) {
-                            childLeft = parentRight - width - lp.rightMargin;
-                            break;
-                        }
-                    case Gravity.LEFT: // 默认居左
-                    default:
-                        childLeft = parentLeft + lp.leftMargin;
-                }
-                switch (verticalGravity) {
-                    case Gravity.TOP: // 顶部
-                        childTop = parentTop + lp.topMargin;
-                        break;
-                    case Gravity.CENTER_VERTICAL: //垂直居中
-                        childTop = parentTop + (parentBottom - parentTop - height) / 2 +
-                        lp.topMargin - lp.bottomMargin;
-                        break;
-                    case Gravity.BOTTOM: // 底部
-                        childTop = parentBottom - height - lp.bottomMargin;
-                        break;
-                    default:  // 默认顶部
-                        childTop = parentTop + lp.topMargin;
-                }
-                // 调用子View的layout方法
-                child.layout(childLeft, childTop, childLeft + width, childTop + height);
-            }
-        }
-    }
-```
-FrameLayout#onLayout()会对子view分别根据它们的padding、方向计算它们的实际边界，然后调动View自身的layout方法。View#layout()方法如下:
+View#layout()方法如下:
 ```
  public void layout(int l, int t, int r, int b) {
         if ((mPrivateFlags3 & PFLAG3_MEASURE_NEEDED_BEFORE_LAYOUT) != 0) { //先判断是否测量完毕，否则会先去执行测量
@@ -1384,10 +1305,93 @@ FrameLayout#onLayout()会对子view分别根据它们的padding、方向计算�
         notifyAppearedOrDisappearedForContentCaptureIfNeeded(true);
     }
 ```
-View#layout()做了2个事，1是将回调(onLayout(),onLayoutChange())给每个具体的View，但只有是ViewGroup才有；2是处理焦点问题。此方法结束后，在DecorView的父
-类FrameLayout的onLayout()就结束了，回到DecorView的onLayout()方法，设置垂直，水平方向偏移等。随后继续回到ViewRootImpl#performLayout()。(部分代码在方法
-中已经添加注释说明，可看到performLayout()方法)。整个performLayout()方法在执行完onLayout()的逻辑，接着看是否有布局请求需要处理，有的话需要测量，布局等一套
-完整流程。   
+View#layout()做了2个事，1是将回调onLayout()给DecorView,onLayoutChange()；2是处理焦点问题。    
+看到DecorView的onLayout()方法
+```
+protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (mApplyFloatingVerticalInsets) { //若有垂直方向的偏移
+            offsetTopAndBottom(mFloatingInsets.top);
+        }
+        if (mApplyFloatingHorizontalInsets) {//水平方向的偏移
+            offsetLeftAndRight(mFloatingInsets.left);
+        }
+        updateElevation(); //更新阴影设置
+        mAllowUpdateElevation = true;
+
+        if (changed
+                && (mResizeMode == RESIZE_MODE_DOCKED_DIVIDER
+                    || mDrawLegacyNavigationBarBackground)) {
+            getViewRootImpl().requestInvalidateRootRenderNode();
+        }
+    }
+```
+DecorView的有super.onLayout(),会先执行父类的OnLayout(),看到FrameLayout的onLayout()。在FrameLayout#onLayout()会间接调用下面这个方法：
+```
+void layoutChildren(int left, int top, int right, int bottom, boolean forceLeftGravity) {
+        final int count = getChildCount(); // 获取子View的数量。
+        // 计算padding值
+        final int parentLeft = getPaddingLeftWithForeground();
+        final int parentRight = right - left - getPaddingRightWithForeground();
+        final int parentTop = getPaddingTopWithForeground();
+        final int parentBottom = bottom - top - getPaddingBottomWithForeground();
+
+        for (int i = 0; i < count; i++) {
+            final View child = getChildAt(i);
+            if (child.getVisibility() != GONE) {
+                final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+                final int width = child.getMeasuredWidth();
+                final int height = child.getMeasuredHeight();
+                int childLeft;
+                int childTop;
+
+                int gravity = lp.gravity;
+                if (gravity == -1) {
+                    gravity = DEFAULT_CHILD_GRAVITY;
+                }
+                final int layoutDirection = getLayoutDirection();
+                final int absoluteGravity = Gravity.getAbsoluteGravity(gravity, layoutDirection);
+                final int verticalGravity = gravity & Gravity.VERTICAL_GRAVITY_MASK;
+                // 根据方向子View的实际边界,上下左右实际的位置
+                switch (absoluteGravity & Gravity.HORIZONTAL_GRAVITY_MASK) {
+                    case Gravity.CENTER_HORIZONTAL: // 水平居中
+                        childLeft = parentLeft + (parentRight - parentLeft - width) / 2 +
+                        lp.leftMargin - lp.rightMargin;
+                        break;
+                    case Gravity.RIGHT: // 居右
+                        if (!forceLeftGravity) {
+                            childLeft = parentRight - width - lp.rightMargin;
+                            break;
+                        }
+                    case Gravity.LEFT: // 默认居左
+                    default:
+                        childLeft = parentLeft + lp.leftMargin;
+                }
+                switch (verticalGravity) {
+                    case Gravity.TOP: // 顶部
+                        childTop = parentTop + lp.topMargin;
+                        break;
+                    case Gravity.CENTER_VERTICAL: //垂直居中
+                        childTop = parentTop + (parentBottom - parentTop - height) / 2 +
+                        lp.topMargin - lp.bottomMargin;
+                        break;
+                    case Gravity.BOTTOM: // 底部
+                        childTop = parentBottom - height - lp.bottomMargin;
+                        break;
+                    default:  // 默认顶部
+                        childTop = parentTop + lp.topMargin;
+                }
+                // 调用子View的layout方法
+                child.layout(childLeft, childTop, childLeft + width, childTop + height);
+            }
+        }
+    }
+```
+FrameLayout#onLayout()会对子view分别根据它们的padding、方向计算它们的实际边界，然后再调用子View的layout方法，完成所有view的遍历。   
+FrameLayout的onLayout()就结束后，回到DecorView的onLayout()方法，设置垂直，水平方向偏移等。随后继续回到View.layout(),触发onLayoutChange监听器，处理
+焦点等问题后方法结束。返回ViewRootImpl#performLayout()。(部分代码在方法中已经添加注释说明，可看到performLayout()方法)。整个performLayout()方法在
+执行完onLayout()的逻辑，接着看是否有布局请求需要处理，有的话需要测量，布局等一套完整流程。    
+
 ViewRootImpl#performLayout()方法结束，流程又回到performTraversals(),前面分了2个部分，第一部分是测量，第二部分是校准以及布局，现在看第三部分：
 ```
        if (surfaceDestroyed) {
@@ -2212,8 +2216,8 @@ Activity#setContentView() ->委托AppCompatDelegateImpl#setContentView() -> AppC
 * 如何触发重新绘制？  
 调用 API requestLayout()或invalidate。
 
-* requestLayout 和 invalidate 的流程，区别？   
-首先看到View中的requestLayout()方法，如果要触发重新绘制的话:
+* requestLayout 和 invalidate 的流程   
+1、首先看到View中的requestLayout()方法:
 ```
     public void requestLayout() {
         if (mMeasureCache != null) mMeasureCache.clear();
@@ -2244,10 +2248,90 @@ Activity#setContentView() ->委托AppCompatDelegateImpl#setContentView() -> AppC
         }
     }
 ```
+从View中的requestLayout()方法可以看出，最终还是走的ViewRootImpl#requestLayout()方法。而ViewRootImpl#requestLayout()前面看过，涵盖了一个完整的绘制
+流程。主要就是三大步骤：performMeasure()、performLayout()、performDraw()。   
+首先是performMeasure()，它最终回到View中的measure()方法，在View.measure()，能否触发onMeasure()主要看下面这点：
+```
+public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
+     // ...
+     
+     // 调用了requestLayout()，会为mPrivateFlags设置PFLAG_FORCE_LAYOUT标志。
+     final boolean forceLayout = (mPrivateFlags & PFLAG_FORCE_LAYOUT) == PFLAG_FORCE_LAYOUT;
+     // ...
+     
+     final boolean needsLayout = specChanged && (sAlwaysRemeasureExactly || !isSpecExactly || !matchesSpecSize);
+     if (forceLayout || needsLayout) {
+        int cacheIndex = forceLayout ? -1 : mMeasureCache.indexOfKey(key); // forceLayout为true，onMeasure()则会被调用。
+            if (cacheIndex < 0 || sIgnoreMeasureCache) {
+                onMeasure(widthMeasureSpec, heightMeasureSpec);
+                mPrivateFlags3 &= ~PFLAG3_MEASURE_NEEDED_BEFORE_LAYOUT;
+            }
+     }
+     mPrivateFlags |= PFLAG_LAYOUT_REQUIRED;
+     // ....
+}
+```
+对于`forceLayout`的值,在requestLayout()的时候就说到mPrivateFlags设置PFLAG_FORCE_LAYOUT。所以这里的forceLayout == true。   
+然后是 performLayout()，也是会到View.layout()方法：
+```
+//....
+
+  boolean changed = isLayoutModeOptical(mParent) ?setOpticalFrame(l, t, r, b) : setFrame(l, t, r, b);
+  if (changed || (mPrivateFlags & PFLAG_LAYOUT_REQUIRED) == PFLAG_LAYOUT_REQUIRED) {
+      onLayout(changed, l, t, r, b);
+
+      if (shouldDrawRoundScrollbar()) {
+          if(mRoundScrollbarRenderer == null) {
+              mRoundScrollbarRenderer = new RoundScrollbarRenderer(this);
+          }
+      } else {
+          mRoundScrollbarRenderer = null;
+      }
+      mPrivateFlags &= ~PFLAG_LAYOUT_REQUIRED; // 清除标志。
+      //......
+  }   
+```
+看到if中的条件，mPrivateFlags是否又被设置PFLAG_LAYOUT_REQUIRED标志。在performMeasure()流程中是设置了PFLAG_LAYOUT_REQUIRED标志，所以onLayout()是
+一定能执行到的。最后看到 performDraw()。performDraw流程会经历：  
+performDraw() -> draw() -> drawSoftware() -> View.draw()。前面都是发生在ViewRootImpl中，看到View.draw():  
+```
+public void draw(Canvas canvas) {
+     //..... 
+     
+     final int viewFlags = mViewFlags;
+     boolean horizontalEdges = (viewFlags & FADING_EDGE_HORIZONTAL) != 0;
+     boolean verticalEdges = (viewFlags & FADING_EDGE_VERTICAL) != 0;
+     if (!verticalEdges && !horizontalEdges) {
+            onDraw(canvas);
+     //.......      
+     }
+     
+     //.......
+ }           
+```
+可以看到这里的onDraw()的触发与是否有设置FADING_EDGE_HORIZONTAL，FADING_EDGE_VERTICAL2个标志位有关，整个类搜索后，没有发现哪个地方是一定设置此标志。
+也就是说在requestLayout()的调用有可能不会触发onDraw()的回调。回到ViewRootImpl中看到draw():
+```
+private boolean draw(boolean fullRedrawNeeded) {
+    //.......
+    
+    if (!dirty.isEmpty() || mIsAnimating || accessibilityFocusDirty) {
+         if (mAttachInfo.mThreadedRenderer != null && mAttachInfo.mThreadedRenderer.isEnabled()) {
+             //........
+         }else{
+            if (!drawSoftware(surface, mAttachInfo, xOffset, yOffset,
+                 scalingRequired, dirty, surfaceInsets)) {
+                 return false;
+            }
+         }
+    }
+    //......
+}
+```
+代码出`drawSoftware()`的调用也是不一定的，取决于dirty是否为空，或者在执行动画等等。   
+2、invalidate()
 
 
-ViewRootImpl的requestLayout流程： scheduleTraversals() -> doTraversal() -> performTraversals()。其中在performTraversals()又有几大重要方法：
-[performMeasure() -- performLayout() - performDraw()]
 
 * invalidate() 和 postInvalidate()的区别?
 
