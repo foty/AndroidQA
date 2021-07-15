@@ -2216,7 +2216,7 @@ Activity#setContentView() ->委托AppCompatDelegateImpl#setContentView() -> AppC
 * 如何触发重新绘制？  
 调用 API requestLayout()或invalidate。
 
-* requestLayout 和 invalidate 的流程   
+* requestLayout 和 invalidate 的流程、区别   
 1、首先看到View中的requestLayout()方法:
 ```
     public void requestLayout() {
@@ -2248,8 +2248,8 @@ Activity#setContentView() ->委托AppCompatDelegateImpl#setContentView() -> AppC
         }
     }
 ```
-从View中的requestLayout()方法可以看出，最终还是走的ViewRootImpl#requestLayout()方法。而ViewRootImpl#requestLayout()前面看过，涵盖了一个完整的绘制
-流程。主要就是三大步骤：performMeasure()、performLayout()、performDraw()。   
+从View中的requestLayout()方法可以看出，最终还是走的ViewRootImpl#requestLayout()方法。而ViewRootImpl#requestLayout()前面知道，会去调用
+scheduleTraversals()，触发一个完整的绘制流程。主要就是三大步骤：performMeasure()、performLayout()、performDraw()。   
 首先是performMeasure()，它最终回到View中的measure()方法，在View.measure()，能否触发onMeasure()主要看下面这点：
 ```
 public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -2310,7 +2310,7 @@ public void draw(Canvas canvas) {
  }           
 ```
 可以看到这里的onDraw()的触发与是否有设置FADING_EDGE_HORIZONTAL，FADING_EDGE_VERTICAL2个标志位有关，整个类搜索后，没有发现哪个地方是一定设置此标志。
-也就是说在requestLayout()的调用有可能不会触发onDraw()的回调。回到ViewRootImpl中看到draw():
+回到ViewRootImpl中看到draw():
 ```
 private boolean draw(boolean fullRedrawNeeded) {
     //.......
@@ -2328,12 +2328,83 @@ private boolean draw(boolean fullRedrawNeeded) {
     //......
 }
 ```
-代码出`drawSoftware()`的调用也是不一定的，取决于dirty是否为空，或者在执行动画等等。   
-2、invalidate()
+同样的也没有绝对的一个标志，类似`PFLAG_FORCE_LAYOUT`,`PFLAG_LAYOUT_REQUIRED`控制onLayout(),onMeasure()回调。从`drawSoftware()`上来看，
+onDraw()跟dirty区域相关，或者在执行动画等等。
+   
+2、invalidate()  
+看到View.invalidate()，间接调用几个方法后来到 invalidateInternal(...)方法：
+```
+void invalidateInternal(int l, int t, int r, int b, boolean invalidateCache,boolean fullInvalidate) {
+      //.....
+      
+      mPrivateFlags |= PFLAG_DIRTY; // 设置标志
+      if (invalidateCache) {
+            mPrivateFlags |= PFLAG_INVALIDATED;
+            mPrivateFlags &= ~PFLAG_DRAWING_CACHE_VALID;
+      }
 
+      final AttachInfo ai = mAttachInfo;
+      final ViewParent p = mParent;
+      if (p != null && ai != null && l < r && t < b) {
+            final Rect damage = ai.mTmpInvalRect;
+            damage.set(l, t, r, b);
+            p.invalidateChild(this, damage);
+      }
+      
+      //......
+    }
+```
+看到`p.invalidateChild()`，其中p就是mParent，也就是父布局的意思，经过view树向上递归，会来到ViewRootImpl.invalidateChild()方法，然后调用到
+invalidateChildInParent()方法：
+```
+public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
+   checkThread();
+   if (dirty == null) {
+       invalidate();
+       return null;
+   } else if (dirty.isEmpty() && !mIsAnimating) {
+       return null;
+   }
 
+   if (mCurScrollY != 0 || mTranslator != null) {
+       mTempRect.set(dirty);
+       dirty = mTempRect;
+       if (mCurScrollY != 0) {
+            dirty.offset(0, -mCurScrollY);
+       }
+       if (mTranslator != null) {
+            mTranslator.translateRectInAppWindowToScreen(dirty);
+       }
+       if (mAttachInfo.mScalingRequired) {
+           dirty.inset(-1, -1);
+       }
+   }
+  invalidateRectOnScreen(dirty);
+  return null;
+}
+```
+上面主要就是对dirty区域重新计算校验，最后来到`invalidateRectOnScreen(dirty)`:
+```
+    private void invalidateRectOnScreen(Rect dirty) {
+        final Rect localDirty = mDirty;
+        localDirty.union(dirty.left, dirty.top, dirty.right, dirty.bottom);
+        final float appScale = mAttachInfo.mApplicationScale;
+        final boolean intersected = localDirty.intersect(0, 0,
+                (int) (mWidth * appScale + 0.5f), (int) (mHeight * appScale + 0.5f));
+        if (!intersected) {
+            localDirty.setEmpty();
+        }
+        if (!mWillDrawSoon && (intersected || mIsAnimating)) {
+            scheduleTraversals();
+        }
+    }
+```
+可以看到，最后还是调用了`scheduleTraversals()`触发绘制流程，但是由于没有设置`PFLAG_FORCE_LAYOUT`,`PFLAG_LAYOUT_REQUIRED`，直接设置`PFLAG_DIRTY`标
+志，不会走测量和布局的两个流程。  
+所以 invalidate()与 requestLayout()都会触发View树重新绘制。但是invalidate()不会触发测量与Layout过程，而requestLayout()一定能触发测量与layout过程。
 
 * invalidate() 和 postInvalidate()的区别?
+invalidate()在主线程中使用，postInvalidate()可以在非主线程使用，其中使用了handler作为桥梁。
 
 * LayoutInflate 的流程
 
