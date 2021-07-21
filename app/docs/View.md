@@ -2207,11 +2207,17 @@ DecorView实际构建的布局是分情况的，具体看到PhoneWindow#generate
 Activity#setContentView() ->委托AppCompatDelegateImpl#setContentView() -> AppCompatDelegateImpl#ensureSubDecor()准备DecorView ->
 从DecorView找到id为content的布局，将view add进去。
 
-* 说说自定义view的几个构造函数
+* 说说自定义view的几个构造函数   
+常用到的有3个方法，其参数情况分别是1个,2个,3个。1个参数的方法通常在创建对象是调用，也就是在代码中new；2个参数方法通常在写在xml文件中被解析加载时调用；最
+后一个通常不会自动被调用，需要手动调用。  
 
-* ViewGroup是怎么分发绘制的
+* ViewGroup是怎么分发绘制的   
+大概是说ViewGroup的dispatchDraw()方法吧。`dispatchDraw()`是在View.draw()绘制步骤中onDraw()之后的下一步操作。顾名思义就是分发绘制，在View中是一
+个空实现。能分发子view绘制也只有ViewGroup。在dispatchDraw()会获取到子view的数量，分别调用它们的draw()方法完成子view的绘制。
 
-* onLayout() 和Layout()的区别
+* onLayout() 和layout()的区别   
+onLayout()是父view，一般都是ViewGroup，确定子view位置调用的方法，通常会配合onMeasure()使用；而layout()是确定view本身位置调用的方法。一般只会重写
+onLayout()方法，不用重写layout()。
 
 * 如何触发重新绘制？  
 调用 API requestLayout()或invalidate。
@@ -2329,7 +2335,7 @@ private boolean draw(boolean fullRedrawNeeded) {
 }
 ```
 同样的也没有绝对的一个标志，类似`PFLAG_FORCE_LAYOUT`,`PFLAG_LAYOUT_REQUIRED`控制onLayout(),onMeasure()回调。从`drawSoftware()`上来看，
-onDraw()跟dirty区域相关，或者在执行动画等等。
+onDraw()跟dirty区域相关，或者在执行动画等等。   
    
 2、invalidate()  
 看到View.invalidate()，间接调用几个方法后来到 invalidateInternal(...)方法：
@@ -2408,13 +2414,14 @@ invalidate()在主线程中使用，postInvalidate()可以在非主线程使用�
 
 * LayoutInflate 的流程
 
-* 描述一下getX()、getRawX()、getTranslationX()
-
 * Android中的动画有哪几类，它们的特点和区别是什么
+
+* 描述一下getX()、getRawX()、getTranslationX()
 
 * Interpolator和TypeEvaluator是什么，有什么用
 
-* View刷新机制
+* View刷新机制   
+view的刷新其实就是重绘，想问绘制机制？还是16.6 ms切换一帧的机制呢？
 
 
 ##### 参考资料
