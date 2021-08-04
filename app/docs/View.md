@@ -2108,7 +2108,8 @@ performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`�
  
 
 ##### 2.1、测量模式
-测量模式是 MeasureSpec中的一部分。MeasureSpec表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格大小SpecSize。
+测量模式是 MeasureSpec中的一部分。MeasureSpec表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格大小SpecSize。通
+常用来说明应该如何测量这个View。  
 测量模式有三种:
 * MeasureSpec.UNSPECIFIED  没有任何约束，可以是想要的任何大小(使用较少)
 * MeasureSpec.EXACTLY      有一个精确的尺寸大小,比如100dp或者设置为match_parent时生效。
@@ -2170,9 +2171,12 @@ performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`�
 * 当为 AT_MOST时，除了有具体值，否则都是 AT_MOST。
 * 当为 UNSPECIFIED时，除了有具体值，否则都是 UNSPECIFIED。
 
+
 ##### View中的动画
 
+
 ##### View中的事件分发
+
 
 ##### LayoutParams
 ViewGroup的布局参数基本类，有多个重载方法：
@@ -2181,46 +2185,57 @@ ViewGroup的布局参数基本类，有多个重载方法：
 * LayoutParams(LayoutParams source)： 会克隆源的宽度和高度值。
 * LayoutParams()
 
+
 ##### View的保存与恢复
 就是View中的2个API,还包括一个保存的对象SavedState，实现了Parcelable接口。一般将保存内容存放到这个对象里面。
 * Parcelable onSaveInstanceState()
 * void onRestoreInstanceState(Parcelable state)
 
+
 ##### 自定义控件掌握
+会自定义view控件
 
 
 ##### 常见问题
 * 首次 View的绘制流程是在什么时候触发的？   
-考验api流程了，关键如下：ActivityThread#handleResumeActivity() -> WindowManagerImpl#addView()->
-WindowManagerGlobal#addView() -> ViewRootImpl()setView() -> ViewRootImpl#requestLayout()。  
+考验api流程了，关键如下：ActivityThread#handleResumeActivity() -> WindowManagerImpl#addView()->WindowManagerGlobal#addView() 
+-> ViewRootImpl()setView() -> ViewRootImpl#requestLayout()。  
 所以答案是在 ActivityThread的handleResumeActivity()方法。
+
 
 * Activity、PhoneWindow、DecorView、ViewRootImpl 的关系？   
 包含关系大概为：Activity[Window->PhoneWindow[DecorView]],而ViewRootImpl可以说是DecorView的管家，继承了ViewParent接口，用来掌管View的各种事
 件，包括 requestLayout、invalidate、dispatchInputEvent等等。
 
+
 * DecorView 的布局是什么样的？  
 DecorView实际构建的布局是分情况的，具体看到PhoneWindow#generateLayout()方法，根据各种不同情况来选择不一样的布局。但他们都会有一个id为content
 的FrameLayout布局，这个布局是setContentView(R.layout.xx)中的布局的直接父布局。
+
 
 * setContentView 的流程   
 Activity#setContentView() ->委托AppCompatDelegateImpl#setContentView() -> AppCompatDelegateImpl#ensureSubDecor()准备DecorView ->
 从DecorView找到id为content的布局，将view add进去。
 
+
 * 说说自定义view的几个构造函数   
 常用到的有3个方法，其参数情况分别是1个,2个,3个。1个参数的方法通常在创建对象是调用，也就是在代码中new；2个参数方法通常在写在xml文件中被解析加载时调用；最
 后一个通常不会自动被调用，需要手动调用。  
+
 
 * ViewGroup是怎么分发绘制的   
 大概是说ViewGroup的dispatchDraw()方法吧。`dispatchDraw()`是在View.draw()绘制步骤中onDraw()之后的下一步操作。顾名思义就是分发绘制，在View中是一
 个空实现。能分发子view绘制也只有ViewGroup。在dispatchDraw()会获取到子view的数量，分别调用它们的draw()方法完成子view的绘制。
 
+
 * onLayout() 和layout()的区别   
 onLayout()是父view，一般都是ViewGroup，确定子view位置调用的方法，通常会配合onMeasure()使用；而layout()是确定view本身位置调用的方法。一般只会重写
 onLayout()方法，不用重写layout()。
 
+
 * 如何触发重新绘制？  
 调用 API requestLayout()或invalidate。
+
 
 * requestLayout 和 invalidate 的流程、区别   
 1、首先看到View中的requestLayout()方法:
@@ -2409,8 +2424,29 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
 志，不会走测量和布局的两个流程。  
 所以 invalidate()与 requestLayout()都会触发View树重新绘制。但是invalidate()不会触发测量与Layout过程，而requestLayout()一定能触发测量与layout过程。
 
+
 * invalidate() 和 postInvalidate()的区别?
 invalidate()在主线程中使用，postInvalidate()可以在非主线程使用，其中使用了handler作为桥梁。
+
+
+* 为什么onCreate获取不到View的宽高?  
+因为view的绘制是在onResume()之后才开始去绘制的，具体在ActivityThread#handleResumeActivity()方法内。
+
+
+* 子View创建MeasureSpec创建规则是什么?   
+可以看到`2.1、测量模式`板块下的表格，父布局的MeasureSpec与view自身的宽高属性决定的。
+
+
+* 自定义View的wrap_content属性不起作用的原因?  
+在View的默认测量模式下，View的测量模式是AT_MOST或者EXACTLY时，view的大小会被设置成MeasureSpec的specSize。而当view使用wrap_content属性时，最终view
+的MeasureSpec都会被转换成AT_MOST，也就是父布局的大小了。
+
+
+* View#post与Handler#post的区别?    ?????????
+View#post当View已经attach到window，直接调用UI线程的Handler发送runnable。如果View还未attach到window，将runnable放入ViewRootImpl的RunQueue中，
+而不是通过MessageQueue。RunQueue的作用类似于MessageQueue，只不过这里面的所有runnable最后的执行时机，是在下一个performTraversals到来的时候，
+也就是view完成layout之后的第一时间获取宽高，MessageQueue里的消息处理的则是下一次loop到来的时候。
+
 
 * LayoutInflate 的流程
 
@@ -2420,7 +2456,8 @@ invalidate()在主线程中使用，postInvalidate()可以在非主线程使用�
 
 * Interpolator和TypeEvaluator是什么，有什么用
 
-* View刷新机制   
+
+* View刷新机制(VSync?、Choreographer?)   
 view的刷新其实就是重绘，想问绘制机制？还是16.6 ms切换一帧的机制呢？
 
 
