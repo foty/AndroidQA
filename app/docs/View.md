@@ -2458,7 +2458,7 @@ View#post当View已经attach到window，直接调用UI线程的Handler发送runn
 
 
 * View刷新机制(VSync?、Choreographer?)   
-view的刷新其实就是重绘，想问绘制机制？还是16.6 ms切换一帧的机制呢？
+view的刷新其实就是重绘，想问绘制机制？还是16.6 ms切换一帧的机制呢？  
 
 
 ##### 参考资料
