@@ -2477,7 +2477,7 @@ view的刷新其实就是重绘，想问绘制机制？还是16.6 ms切换一帧
 
 
 ##### 参考资料
-* <https://blog.csdn.net/huangqili1314/article/details/79824830>
+* <https://blog.csdn.net/huangqili1314/article/details/79824830> 
 * <https://blog.csdn.net/qq_30993595/article/details/80931556>
 * <https://www.cnblogs.com/huansky/p/11911549.html>
 * <https://mp.weixin.qq.com/s/wy9V4wXUoEFZ6ekzuLJySQ>
