@@ -2442,10 +2442,25 @@ invalidate()在主线程中使用，postInvalidate()可以在非主线程使用�
 的MeasureSpec都会被转换成AT_MOST，也就是父布局的大小了。
 
 
-* View#post与Handler#post的区别?    ?????????
-View#post当View已经attach到window，直接调用UI线程的Handler发送runnable。如果View还未attach到window，将runnable放入ViewRootImpl的RunQueue中，
-而不是通过MessageQueue。RunQueue的作用类似于MessageQueue，只不过这里面的所有runnable最后的执行时机，是在下一个performTraversals到来的时候，
-也就是view完成layout之后的第一时间获取宽高，MessageQueue里的消息处理的则是下一次loop到来的时候。
+* View#post与Handler#post的区别?    ?????????  
+看到View.post()方法：
+```
+public boolean post(Runnable action) {
+   final AttachInfo attachInfo = mAttachInfo;
+   if (attachInfo != null) {
+       return attachInfo.mHandler.post(action);
+   }
+   getRunQueue().post(action);
+   return true;
+}
+```
+可以看到View#post当View已经attach到window，直接调用UI线程的Handler发送runnable。如果View还未attach到window，将runnable放入ViewRootImpl
+的RunQueue中，而不是通过MessageQueue。RunQueue的作用类似于MessageQueue，只不过这里面的所有runnable最后的执行时机，是在下一个performTraversals到
+来的时候，也就是view完成layout之后的第一时间获取宽高，MessageQueue里的消息处理的则是下一次loop到来的时候。
+
+
+* View刷新机制(VSync?、Choreographer?)   
+view的刷新其实就是重绘，想问绘制机制？还是16.6 ms切换一帧的机制呢？ 
 
 
 * LayoutInflate 的流程
