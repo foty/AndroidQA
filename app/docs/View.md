@@ -2107,6 +2107,19 @@ performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`�
  
  
 
+
+##### [总结]View绘制核心方法performTraversals内各大流程方法调用顺序示意图
+private void performTraversals() { 
+ // 准备阶段
+ 
+ // 测量阶段(measureHierarchy()->performMeasure()->mView.measure())
+ 
+ // layout阶段()(performLayout() ->onLayout())
+ 
+ // draw阶段(performDraw()->draw()->drawSoftware()->mView.draw())
+ 
+}
+
 ##### 2.1、测量模式
 测量模式是 MeasureSpec中的一部分。MeasureSpec表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格大小SpecSize。通
 常用来说明应该如何测量这个View。  
@@ -2175,7 +2188,7 @@ performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`�
 ##### View中的动画
 
 
-##### View中的事件分发
+##### View中的事件分发  
 
 
 ##### LayoutParams
@@ -2442,7 +2455,7 @@ invalidate()在主线程中使用，postInvalidate()可以在非主线程使用�
 的MeasureSpec都会被转换成AT_MOST，也就是父布局的大小了。
 
 
-* View#post与Handler#post的区别?    ?????????  
+* View#post与Handler#post的区别    
 看到View.post()方法：
 ```
 public boolean post(Runnable action) {
@@ -2454,9 +2467,43 @@ public boolean post(Runnable action) {
    return true;
 }
 ```
-可以看到View#post当View已经attach到window，直接调用UI线程的Handler发送runnable。如果View还未attach到window，将runnable放入ViewRootImpl
-的RunQueue中，而不是通过MessageQueue。RunQueue的作用类似于MessageQueue，只不过这里面的所有runnable最后的执行时机，是在下一个performTraversals到
-来的时候，也就是view完成layout之后的第一时间获取宽高，MessageQueue里的消息处理的则是下一次loop到来的时候。
+可以看到View#post当View已经attach到window，直接调用UI线程的Handler发送runnable。如果View还未attach到window，则通过getRunQueue().post()。这个
+getRunQueue()获取的是HandlerActionQueue实例。等到执行performTraversals()方法时再将runnable发送出去。   
+RunQueue的作用类似于MessageQueue，可以保存runnable。可以看到HandlerActionQueue里的post():
+```
+    public void post(Runnable action) {
+        postDelayed(action, 0);
+    }
+    public void postDelayed(Runnable action, long delayMillis) {
+        final HandlerAction handlerAction = new HandlerAction(action, delayMillis);
+        synchronized (this) {
+            if (mActions == null) {
+                mActions = new HandlerAction[4];
+            }
+            mActions = GrowingArrayUtils.append(mActions, mCount, handlerAction);
+            mCount++;
+        }
+    }
+```
+HandlerAction是一个静态内部类，只有2个成员变量：Runnable与delay time。在post方法仅仅是将构建的HandlerAction添加到HandlerAction数组中。那么里面的
+runnable到底什么时候被执行呢?根据HandlerAction数组的调用情况，可以在这个类中找到一个方法`executeActions()`：
+```
+    public void executeActions(Handler handler) {
+        synchronized (this) {
+            final HandlerAction[] actions = mActions;
+            for (int i = 0, count = mCount; i < count; i++) {
+                final HandlerAction handlerAction = actions[i];
+                handler.postDelayed(handlerAction.action, handlerAction.delay);
+            }
+            mActions = null;
+            mCount = 0;
+        }
+    }
+```
+通过Handler将runnable发送出去执行。搜索executeActions方法的调用。发现在ViewRootImpl#performTraversals()和View#dispatchAttachedToWindow()有
+调用。performTraversals()方法是View的绘制流程的开端,所以在执行绘制的过程中就会将HandlerAction数组保存的runnable执行。调用处代码为
+`getRunQueue().executeActions(mAttachInfo.mHandler);`。在另外dispatchAttachedToWindow()的调用可以追溯到performTraversals()方法的
+`host.dispatchAttachedToWindow(mAttachInfo, 0);`。并且调用时间比getRunQueue().executeActions()还要靠前。
 
 
 * View刷新机制(VSync?、Choreographer?)   
@@ -2472,8 +2519,6 @@ view的刷新其实就是重绘，想问绘制机制？还是16.6 ms切换一帧
 * Interpolator和TypeEvaluator是什么，有什么用
 
 
-* View刷新机制(VSync?、Choreographer?)   
-view的刷新其实就是重绘，想问绘制机制？还是16.6 ms切换一帧的机制呢?
 
 
 ##### 参考资料
