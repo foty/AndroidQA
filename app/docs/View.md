@@ -2121,8 +2121,8 @@ private void performTraversals() {
 }
 
 ##### 2.1、测量模式
-测量模式是 MeasureSpec中的一部分。MeasureSpec表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格大小SpecSize。通
-常用来说明应该如何测量这个View。  
+测量模式是 MeasureSpec中的一部分。MeasureSpec是一个类，表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格
+大小SpecSize。通常用来说明应该如何测量这个View。  
 测量模式有三种:
 * MeasureSpec.UNSPECIFIED  没有任何约束，可以是想要的任何大小(使用较少)
 * MeasureSpec.EXACTLY      有一个精确的尺寸大小,比如100dp或者设置为match_parent时生效。
@@ -2250,7 +2250,7 @@ onLayout()方法，不用重写layout()。
 调用 API requestLayout()或invalidate。
 
 
-* requestLayout 和 invalidate 的流程、区别   
+* requestLayout() 和 invalidate() 的流程、区别   
 1、首先看到View中的requestLayout()方法:
 ```
     public void requestLayout() {
@@ -2442,8 +2442,13 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
 invalidate()在主线程中使用，postInvalidate()可以在非主线程使用，其中使用了handler作为桥梁。
 
 
-* 为什么onCreate获取不到View的宽高?  
+* 为什么onCreate()获取不到View的宽高?  
 因为view的绘制是在onResume()之后才开始去绘制的，具体在ActivityThread#handleResumeActivity()方法内。
+
+
+* MeasureSpec是什么  
+MeasureSpec是一个类，表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格
+大小SpecSize。通常用来说明应该如何测量这个View。
 
 
 * 子View创建MeasureSpec创建规则是什么?   
@@ -2506,9 +2511,66 @@ runnable到底什么时候被执行呢?根据HandlerAction数组的调用情况�
 `host.dispatchAttachedToWindow(mAttachInfo, 0);`。并且调用时间比getRunQueue().executeActions()还要靠前。
 
 
-* View刷新机制(VSync?、Choreographer?)   
-view的刷新其实就是重绘，想问绘制机制？还是16.6 ms切换一帧的机制呢？ 
+* getWidth()和getMeasureWidth()的区别  
+getMeasuredWidth()方法获得的值是setMeasuredDimension方法设置的值，它的值在measure方法运行后就会确定。可以说是一个预期值。getWidth()方法在View中
+计算规则是mRight-mLeft。这俩是在layout()方法中通过setFrame()会重新赋值，是view的最终显示宽度。因为可能会有padding以及margin值存在。getWidth()的
+值是 <= getMeasuredWidth()的。
 
+
+* 相对布局、线性布局、帧布局效率关系?
+
+* 自定义View如何考虑机型适配。
+
+* 自定义View的优化方案。
+
+* Android View绘制和屏幕刷新机制(VSync?、Choreographer?、双缓存?)   
+https://www.jianshu.com/p/6c8045a9c015   
+
+1.显示系统的基础知识：
+>在一个典型的显示系统中，一般包括CPU、GPU、Display三个部分， CPU负责计算帧数据，把计算好的数据交给GPU，GPU会对图形数据进行渲染，
+渲染好后放到buffer(图像缓冲区)里存起来，然后Display(屏幕或显示器)负责把buffer里的数据呈现到屏幕上。简单说就是cpu计算好交给gpu，
+gpu渲染好放到缓冲区，显示器从缓冲区取到数据显示在屏幕上。  
+
+2.名词概念  
+根据cpu、gup在屏幕刷新中作用产生几个特有名词：  
+* 屏幕刷新率：指一秒内屏幕刷新的次数。或者显示了几帧图像。单位hz。刷新率是固定不变的，取决于固件参数。  
+* 帧率：GPU一秒绘制的帧数，单位fps。Android系统采用60fps的帧率。
+
+3.屏幕刷新原理。   
+前面提到了，cpu负责计算数据，gpu负责渲染，显示器负责显示。显示器将数据显示不是一次性完成的，它是按从左到右，从上到下的顺序显示在屏幕上。
+60Hz的屏幕完成一次刷新花费时间大概是16.6ms(1000/60)。
+
+* 双缓冲?   
+原因：正常情况下，cpu/gpu完成计算渲染放在缓冲区，显示器取出显示，这一过程是连续的，不断的。这样一边修改一边取出就很容易出现问题(并发修改)。就会导致
+屏幕上显示的数据来自不同帧。  
+解决：使用双缓存机制。  
+
+什么是双缓存。  
+双缓存就是让计算渲染的cpu/gpu跟显示器拥有独立的缓存空间。cpu/gpu完成数据放到自己的缓冲区，当需要显示时，与显示器的缓冲区交换数据。
+
+
+2.VSync   
+VSync的全称是Vertical Synchronization,即垂直同步。  
+现在知道了屏幕刷新使用了2个缓冲区。那么什么时候才是最佳的交换数据时机呢?
+
+
+* 什么是SurfaceView  
+SurfaceView是Android中一种比较特殊的视图(View)，它跟普通View最大的区别是它跟它的视图容器并不是在同一个视图层上，它的UI显示也可以不在一个独立的线
+程中完成，所以对SurfaceView的绘制并不会影响到主线程的运行。
+
+
+* 为什么使用SurfaceView  
+View是通过刷新来重绘视图，系统通过发出VSync信号来进行屏幕的重绘，刷新的时间间隔是16ms,如果可以在16ms以内将绘制工作完成，则没有任何问题，
+如果绘制过程逻辑很复杂，并且界面更新还非常频繁，这时候就会造成界面的卡顿，影响用户体验，为此Android提供了SurfaceView来解决这一问题。
+
+
+* View与surfaceView的区别?
+1、View适用于主动更新的情况，而SurfaceView更适用于被动更新的情况，比如频繁刷新界面。  
+2、View在主线程中刷新页面，而SurfaceView在子线程刷新页面。  
+3、View在绘图时没有实现双缓冲机制，SurfaceView在底层机制中实现双缓冲机制。  
+
+
+* Choreographer机制原理?
 
 * LayoutInflate 的流程
 

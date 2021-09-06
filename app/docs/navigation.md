@@ -23,11 +23,13 @@
 
 #### frameWork与编译
 * 启动流程
-* AMS、PMS、WMS
-* apk打包
+* zygote、AMS、PMS、WMS
+* apk打包流程
+* 签名机制
 * 编译注解、APT(Annotation Processing Tool,即注解处理器)
 * 依赖注入(DI)
 * ASM插桩，Hook，字节码
+* AOP
 * 进程、线程(一个应用启动有几个进程)
 * 插件化
 ...
@@ -36,11 +38,12 @@
 * RxJava 原理、操作符、背压
 * OkHttp
 * Glide
+* LruCache原理
 * Retrofit
 * Leaks
 * liveData (粘性事件导致数据倒灌---先setValue，再observer,还能收到事件)
 * ARouter
-* RecyclerView
+* RecyclerView(缓存机制、滑动回收)
 ...
 
 #### 网络知识
@@ -58,6 +61,6 @@
 #### 其他技能
 * python爬虫
 * c++
-* 逆向
 * linux
+* 逆向
 
