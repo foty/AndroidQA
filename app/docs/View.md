@@ -65,7 +65,7 @@
 ```
 attach()方法实际还是做初始化的事情，mWindow是PhoneWindow实例(Window本身是一个抽象类)，mWindowManager是WindowManager对象，但WindowManager是
 一个接口，最后获取的实例它的子类WindowManagerImpl。   
-performLaunchActivity()之后会进入到Activity生命周期，体现就是走Activity#onCreate()方法。设置布局的入口在`setContentView(R.layout.activity_main);`:
+performLaunchActivity()之后会进入到Activity生命周期，体现就是走Activity#onCreate()方法。设置布局的入口在`setContentView(R.layout.activity_main);`
 看下setContentView():
 ```html
   @Override
@@ -73,8 +73,8 @@ performLaunchActivity()之后会进入到Activity生命周期，体现就是走A
         getDelegate().setContentView(layoutResID);
   }
 ```
-这里看的源代码是android 11，对应api版本是30。不同版本的api实现可能有些不一样。`setContentView()`这里使用了委托，委托给AppCompatDelegate，AppCompatDelegate
-是一个抽象类，实现在AppCompatDelegateImpl。看到这个类的`setContentView`:
+这里看的源代码是android 11，对应api版本是30。不同版本的api实现可能有些不一样。`setContentView()`这里使用了委托，委托给AppCompatDelegate，
+而AppCompatDelegate是一个抽象类，实现在AppCompatDelegateImpl。看到这个类的`setContentView`:
 ```html
     public void setContentView(int resId) {
         ensureSubDecor();
@@ -213,8 +213,8 @@ PhoneWindow的`installDecor()`。
          }
     }
 ```
-installDecor()保证了mDecor不会为null，并且设置一些系统相关样式属性参数。`generateDecor(-1);`方法主要是先获取Context。是使用，然后new出DecorView对象。另外
-`generateLayout(mDecor)`这里有一点要注意：
+installDecor()保证了mDecor不会为null，并且设置一些系统相关样式属性参数。`generateDecor(-1);`方法主要是先获取Context。是使用，然后new出DecorView对象。
+另外`generateLayout(mDecor)`这里有一点要注意：
 ```html
 protected ViewGroup generateLayout(DecorView decor){
  // 省略前面代码。。。
@@ -232,8 +232,8 @@ protected ViewGroup generateLayout(DecorView decor){
  }
 ```
 返回的是从decor中找到id为ID_ANDROID_CONTENT的一个View。ID_ANDROID_CONTENT还有另外一个身份就是com.android.internal.R.id.content。这个后面会用到。   
-回到`createSubDecor()`。mWindow.getDecorView()执行完毕。继续往下执行。整个方法后面一部分核心还是inflate出一个View作为新的window容器，也就是subDecor。到
-后面
+回到`createSubDecor()`。mWindow.getDecorView()执行完毕。继续往下执行。整个方法后面一部分核心还是inflate出一个View作为新的window容器，也就是subDecor。
+到后面
 >final ViewGroup windowContentView = (ViewGroup) mWindow.findViewById(android.R.id.content);
 
 这里找到id为R.id.content的View，如果能找到并且它原来有其他的子view，要把这些内容迁移到新的容器(contentView)。contentView是subDecor的第一个子view，
@@ -262,8 +262,8 @@ PhoneWindow#setContentView(),最终或调用下面方法：
         mContentParentExplicitlySet = true;
     }
 ```
-前面第一个if else中`installDecor()`前面已经有看过，下面看到`FEATURE_CONTENT_TRANSITIONS`这个flag，大概翻译就是内容过渡标志。我的理解是类似activity的转场
-动画。带有这个标志是内容中的某个控件或元素支持过渡动画。如果需要内容过渡则通过Scene添加view，否则直接添加view到mContentParent。在Scene也可以看到：
+前面第一个if else中`installDecor()`前面已经有看过，下面看到`FEATURE_CONTENT_TRANSITIONS`这个flag，大概翻译就是内容过渡标志。我的理解是类似activity
+的转场动画。带有这个标志是内容中的某个控件或元素支持过渡动画。如果需要内容过渡则通过Scene添加view，否则直接添加view到mContentParent。在Scene也可以看到：
 ```html
     public Scene(ViewGroup sceneRoot, View layout) {
         mSceneRoot = sceneRoot;
@@ -292,8 +292,8 @@ PhoneWindow#setContentView(),最终或调用下面方法：
 * Window 是一个抽象类，每个Activity都有一个Window，具体实现类为PhoneWindow。
 * PhoneWindow 是Window的实现类，所有具体的绘制逻辑都在这个类中，Window或者说PhoneWindow处在同一个层级上。PhoneWindow内部有一个DecorView的实例。
 * DecorView 继承FrameLayout，是所有视图的根view。它的inflate逻辑取根据系统主题样式由系统创建。它有个id为`android.R.id.content`的子View。
-* id为android.R.id.content的View(mContentParent/contentView,在不同类中有不同的名称) DecorView中的一个子view，实质也是一个FrameLayout，在构建时可能
-会被替换为ContentFrameLayout(也是继承FrameLayout)，但id不会被改变。开发中为activity设置的ContentView，就是它的子View。
+* id为android.R.id.content的View(mContentParent/contentView,在不同类中有不同的名称) DecorView中的一个子view，实质也是一个FrameLayout，在构建
+时可能会被替换为ContentFrameLayout(也是继承FrameLayout)，但id不会被改变。开发中为activity设置的ContentView，就是它的子View。
 
 subDecor添加完mContentParent后，一直返回到最开始地方，也就是AppCompatDelegateImpl#setContentView()中的ensureSubDecor(),再贴一遍代码：
 ```text
@@ -348,8 +348,8 @@ D: parent= android.widget.LinearLayout{cd74625 V.E..... ......I. 0,0-0,0}
 D: parent= com.android.internal.policy.impl.PhoneWindow$DecorView{34a653fa V.E..... R.....ID 0,0-0,0}
 D: parent= null
 ```
-tvHello是一个TextView，它的父布局是一个ConstraintLayout。再往上就是ContentFrameLayout，这表示DecorView中id=content的子view的是被替换过的。view的最
-根父view是DecorView。  
+tvHello是一个TextView，它的父布局是一个ConstraintLayout。再往上就是ContentFrameLayout，这表示DecorView中id=content的子view的是被替换过的。view
+的最根父view是DecorView。  
 
 View的绘制关键就3部分  
  onMeasure()  
@@ -480,8 +480,8 @@ checkThread()就是检查当前线程是否是`original thread`,否则会抛出�
         }
     }
 ```
-`doTraversal()`会执行到`performTraversals()`,到这里才是真真正正的开始绘制。下面开始跟踪理解这个方法。(注：这个方法又大又长，会删除部分没意义的log，debug
-日志，注释等)。
+`doTraversal()`会执行到`performTraversals()`,到这里才是真真正正的开始绘制。下面开始跟踪理解这个方法。(注：这个方法又大又长，会删除部分没意义的log，
+debug日志，注释等)。
 ```text
     private void performTraversals() {
         // cache mView since it is used so much below...
@@ -758,10 +758,10 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
                 (long) mMeasuredHeight & 0xffffffffL); // suppress sign extension
     }
 ```
-总体上看`mView.measure(*,*)`这个方法主要还是做优化工作(一些详细看上面注释)，特别是针对测量规格，其中很重要的一点就是回触发onMeasure()回调。写过自定义View的
-都知道，这是重要一环。把测量这一步骤交给开发者自己去决定。  
-下面回到ViewRootImpl#measureHierarchy()方法，也就是接着执行完`performMeasure()`之后，再次判断测量结果是否是最后，最后返回表示窗口是否发生变化的boolean
-结果。performMeasure()方法结束，流程重新回到performTraversals()中，接着 measureHierarchy()往下：
+总体上看`mView.measure(*,*)`这个方法主要还是做优化工作(一些详细看上面注释)，特别是针对测量规格，其中很重要的一点就是回触发onMeasure()回调。写过自定义
+View的都知道，这是重要一环。把测量这一步骤交给开发者自己去决定。  
+下面回到ViewRootImpl#measureHierarchy()方法，也就是接着执行完`performMeasure()`之后，再次判断测量结果是否是最后，最后返回表示窗口是否发生变化的
+boolean结果。performMeasure()方法结束，流程重新回到performTraversals()中，接着 measureHierarchy()往下：
 ```
        // ...衔接 measureHierarchy()
        if (collectViewAttributes()) { // 保存View的属性
@@ -1181,8 +1181,8 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
         }    
 ```
 
-第二部分(从方法最开始到measureHierarchy()归为第一部分：主要内容就是测量)主要是对第一部分测量结果确认校准，利用底层创建surface，准备绘制线程，执行layout等操
-作。要看具体的布局流程，到performLayout()方法:
+第二部分(从方法最开始到measureHierarchy()归为第一部分：主要内容就是测量)主要是对第一部分测量结果确认校准，利用底层创建surface，准备绘制线程，执行layout
+等操作。要看具体的布局流程，到performLayout()方法:
 ```
     private void performLayout(WindowManager.LayoutParams lp, int desiredWindowWidth,int desiredWindowHeight) {
         mScrollMayChange = true;
@@ -1388,8 +1388,8 @@ void layoutChildren(int left, int top, int right, int bottom, boolean forceLeftG
     }
 ```
 FrameLayout#onLayout()会对子view分别根据它们的padding、方向计算它们的实际边界，然后再调用子View的layout方法，完成所有view的遍历。   
-FrameLayout的onLayout()就结束后，回到DecorView的onLayout()方法，设置垂直，水平方向偏移等。随后继续回到View.layout(),触发onLayoutChange监听器，处理
-焦点等问题后方法结束。返回ViewRootImpl#performLayout()。(部分代码在方法中已经添加注释说明，可看到performLayout()方法)。整个performLayout()方法在
+FrameLayout的onLayout()就结束后，回到DecorView的onLayout()方法，设置垂直，水平方向偏移等。随后继续回到View.layout(),触发onLayoutChange监听器，处
+理焦点等问题后方法结束。返回ViewRootImpl#performLayout()。(部分代码在方法中已经添加注释说明，可看到performLayout()方法)。整个performLayout()方法在
 执行完onLayout()的逻辑，接着看是否有布局请求需要处理，有的话需要测量，布局等一套完整流程。    
 
 ViewRootImpl#performLayout()方法结束，流程又回到performTraversals(),前面分了2个部分，第一部分是测量，第二部分是校准以及布局，现在看第三部分：
@@ -1863,8 +1863,8 @@ private boolean drawSoftware(Surface surface, AttachInfo attachInfo, int xoff, i
         return true;
     }
 ```
-上面方法主要看`mView.draw(canvas);`，其他都是一些准备工作什么的。还是要强调一下，这里的mView是指DecorView的实例，在DecorView的draw(canvas)方法有super
-的调用，而DecorView的直接父类FrameLayout是没有这个方法，ViewGroup中也是没有这个方法，而是在View中有这个方法，所以要看到View的中的这个方法：
+上面方法主要看`mView.draw(canvas);`，其他都是一些准备工作什么的。还是要强调一下，这里的mView是指DecorView的实例，在DecorView的draw(canvas)方法有
+super的调用，而DecorView的直接父类FrameLayout是没有这个方法，ViewGroup中也是没有这个方法，而是在View中有这个方法，所以要看到View的中的这个方法：
 ```
 // DecorView中的简单draw()方法
     public void draw(Canvas canvas) {
@@ -2433,8 +2433,8 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
         }
     }
 ```
-可以看到，最后还是调用了`scheduleTraversals()`触发绘制流程，但是由于没有设置`PFLAG_FORCE_LAYOUT`,`PFLAG_LAYOUT_REQUIRED`，直接设置`PFLAG_DIRTY`标
-志，不会走测量和布局的两个流程。  
+可以看到，最后还是调用了`scheduleTraversals()`触发绘制流程，但是由于没有设置`PFLAG_FORCE_LAYOUT`,`PFLAG_LAYOUT_REQUIRED`，直接设置`PFLAG_DIRTY`
+标志，不会走测量和布局的两个流程。  
 所以 invalidate()与 requestLayout()都会触发View树重新绘制。但是invalidate()不会触发测量与Layout过程，而requestLayout()一定能触发测量与layout过程。
 
 
@@ -2540,33 +2540,52 @@ gpu渲染好放到缓冲区，显示器从缓冲区取到数据显示在屏幕�
 前面提到了，cpu负责计算数据，gpu负责渲染，显示器负责显示。显示器将数据显示不是一次性完成的，它是按从左到右，从上到下的顺序显示在屏幕上。比如
 60Hz的屏幕完成一次刷新花费时间大概是16.6ms(1000/60)。
 
-* 双缓冲?   
-原因：正常情况下，cpu/gpu完成计算渲染放在缓冲区，显示器取出显示，这一过程是连续的，重复的。在屏幕绘制时，对于一个缓冲区一边修改一边取出就很容易出现
+4.使用双缓冲原因   
+正常情况下，cpu/gpu完成计算渲染放在缓冲区，显示器取出显示，这一过程是连续的，重复的。在屏幕绘制时，对于一个缓冲区一边修改一边取出就很容易出现
 问题(并发修改)。就会导致屏幕上显示画面的数据来自不同帧，画面撕裂。  
 解决：使用双缓存机制。  
 
-什么是双缓存。  
+5.什么是双缓存。  
 双缓存就是让计算渲染的cpu/gpu跟抓取数据的显示器使用2个不同的缓存空间。cpu/gpu完成数据放到后缓冲区，当需要显示时，与显示器抓取数据的前缓冲区交换数据。
 从而避免一个画面的数据来源不同帧。注意，当屏幕刷新时，cpu/gpu才开始计算渲染，将数据放到后缓冲区。此时 前缓冲区不会发生变化，当后缓冲区数据完成，前后缓
 冲区才开始交换数据。双缓冲其实使用一种用于解决画面撕裂的处理机制。
 
 
-2.VSync   
+* VSync   
 现在知道屏幕刷新使用了2个缓冲区。那何时是最佳的交换数据时机呢?这时候VSync就上场了。VSync的全称是Vertical Synchronization,即垂直同步。通俗说VSync
 是一个时间中断的信号。系统每次拿到VSync时就开始准备刷新屏幕，保证双缓冲在最佳时间点进行交换，避免出现画面撕裂。与VSync相关的还有2个：Triple Buffer 
 和Choreographer。他们是在android4.1的黄油项目"Project Butter"一同出现的概念。黄油项目对Android Display系统进行了重构。
 
 
-* Choreographer机制原理?  
+* Choreographer机制原理  
 Choreographer是用于配合系统的VSync中断信号的一种机制，起到调度的作用。Choreographer接收系统的VSync信号，保证系统收到VSync信号才开始绘制，让每次绘
 制拥有完整的16.6ms。业界一般用它监控应用的帧率。  
 
 机制(为什么它能做到统一调度这些工作)：    
 https://www.jianshu.com/p/c2d93861095a
-*
-*
-*
-*  
+
+* 初始化：单例模式(类似Handler，保存在ThreadLocal、有Looper)
+* FrameDisplayEventReceiver:  V-Sync信号接收器
+* FrameHandler: V-Sync信号接收器收到VSync信号后发送消息执行doFrame()方法。
+* CallbackQueue[]数组: postCallBack()方法中的runnable就被放置到这个数组中。
+
+Choreographer在ViewRootImpl的构造中被初始化。在绘制流程中的起始开始方法是performTraversals()或者说doTraversal()。而doTraversal()是放在一个
+runnable中被执行的。执行这个runnable的就是Choreographer。在scheduleTraversals()方法：
+```
+void scheduleTraversals() {
+        if (!mTraversalScheduled) {
+            mTraversalScheduled = true;
+            mTraversalBarrier = mHandler.getLooper().getQueue().postSyncBarrier();
+            mChoreographer.postCallback(
+                    Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, null);
+            notifyRendererOfFramePending();
+            pokeDrawLockIfNeeded();
+        }
+    }
+```
+Choreographer通过postCallback()将runnable放到内部的一个CallbackQueue数组中，然后开始请求VSync信号(借助FrameDisplayEventReceiver)，收到信号后由
+FrameHandler发送消息执行doFrame()方法计算帧数时间，决定是否重新请求VSync信号或调用doCallbacks()绘制此帧。在doCallbacks()方法内将CallbackQueue数组
+内的runnable取出依次执行。于是doTraversal()就被执行了。
 
 
 * 什么是SurfaceView  
