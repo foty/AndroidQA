@@ -62,4 +62,9 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 
 <p>
 
-##### 下一个课题待续
+##### 并发(锁)
+注意比较常见的同步代码的手段如：volatile，synchronize，cas。了解他们的概念，工作原理。
+
+<p>
+
+##### 下一课题ing
