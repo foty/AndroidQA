@@ -36,7 +36,7 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 
 ##### Activity的启动流程 (API 28)
 启动流程涉及到以下多个点
-* android 中的消息机制(另开篇幅handler)
+* android 中的消息机制(另开篇幅handler.md)
 * 同步屏障(消息机制。参见Handler.md)
 * binder通信(另开篇幅)
 * zygote进程、system_server进程、AMS、Launcher启动 (见启动流程.md)

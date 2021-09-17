@@ -2206,7 +2206,44 @@ ViewGroup的布局参数基本类，有多个重载方法：
 
 
 ##### 自定义控件掌握
-会自定义view控件
+会自定义view控件。提几个优化细节，或者比较偏的知识。  
+1.都属于自定义属性方面的。获取自定义属性的方法为Context.obtainStyledAttributes(...)，有4个参数，但是一般都写2个，后面俩个都使用默认，那么对
+于obtainStyledAttributes()方法:
+* @AttrRes int defStyleAttr：第3个参数默认是构造方法中的参数defStyleAttr，指定一组attrs，配合styles，也可以达到第4个参数的作用。
+* @StyleRes int defStyleRes：第4个参数，默认是0。用于指定一组styles，结果和配置自定义属性相同，但是不用在xml文件设置任何属性都能读取配置的内容。
+* defStyleAttr与defStyleRes的优先级：只有当defStyleAttr=0时或没有相关属性时才会去defStyleRes寻找。
+
+2.构造方法的使用    
+对于自定义View的初始化方法通常会有2中形式：1、在参数最多的构造中调用，其他构造就使用`this.`形式调用对应参数不同的构造方法，这样只写一次初始化方法即可。
+2、在每个构造方法都调用一次初始化方法。对于这2中形式的建议：
+* 如果获取自定义属性时不会用到第3，第4个参数时，推荐第一种。其实这种情况下2种方式都是一样的，但是第一种只写一遍初始化方法，相对更好些。
+* 如果继承系统已有的View，如TextView、Button、ProgressBar等等，建议使用第二种。因为如果是用第一种写法会将这些View的一些style给覆盖调，最终就可能导
+致和系统内的button，progressBar存在差距。但这也是审美上的问题，具体看个人公司要求。
+
+3.获取自定义属性的优化：
+通常是这么写的：
+```
+TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.xxx,defStyleAttr, 0);
+a.getColor(R.styleable.xxx, defaultxx);
+....
+a.recycle();
+```
+优化后：
+```
+TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.xxx,defStyleAttr, 0);
+int n = c.getIndexCount();
+for (int i = 0; i < n; i++) {
+    int attr = c.getIndex(i);
+    switch (attr){
+        case xxx:
+            break;
+        .....    
+    }
+}
+a.recycle();
+```
+这么写的好处是：当xml并没有设置一定的属性时，不会调用get###()方法，相对应的是接收这个值的对象不会被改变，换个说法就是，接受这个属性值的变量不会因为这个属性
+没有被设置而被修改成使用它的默认值。当然如果这个变量默认值和该属性默认值相同就另外一回事了。
 
 
 ##### 常见问题

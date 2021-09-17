@@ -1,8 +1,8 @@
 #### 基本知识
 * 四大组件
-* View
+* View  (√)
 * 事件分发(滑动冲突处理)
-* Handler
+* Handler (√)
 * 序列化(Serializable与Parcelable)
 * webView优化
 * JNI
@@ -16,14 +16,14 @@
 * GC
 * JVM
 * 类加载过程
-* 锁
+* 锁、并发
 * 泛型
 * 加密
 ...
 
 #### frameWork与编译
-* 启动流程
-* zygote、AMS、PMS、WMS
+* 启动流程 (√)
+* zygote、AMS、PMS、WMS (√)
 * apk打包流程
 * 签名机制
 * 编译注解、APT(Annotation Processing Tool,即注解处理器)
