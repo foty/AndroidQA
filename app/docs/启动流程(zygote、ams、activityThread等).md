@@ -15,8 +15,8 @@ platform/system/core/init.cpp。(系统版本不一样，所有文件路径或�
 由c++实现。(个人学识有限，看不懂c++文件，只能照葫芦画瓢，翻翻源码，作作记录)。在 init.cpp的主函数main()方法中，使用
 epoll机制+死循环维持init(Android)进程一直运行。主函数一部分解析了有关zygote进程的配置文件：
 platform/system/core/rootdir/init.rc，从而fork出zygote进程。   
-一句话概括：Linux的init进程执行到platform/system/core/init.cpp，在这个文件的主函数解析init.rc文件fork出zygote进程。进程变化为：init(Linux) ->
-init(Android) -> zygote。
+一句话概括：Linux的init进程执行到platform/system/core/init.cpp，在这个文件的主函数解析init.rc文件fork出zygote进程。进程变化为：
+init(Linux) ->init(Android) -> zygote。
 
 * zygote进程初始化
 > zygote进程被孵化后会执行到platform/frameworks/base/cmds/app_process/app_main.cpp文件。app_main.cpp的主函数中
@@ -209,8 +209,8 @@ ZygoteProcess#attemptZygoteSendArgsAndGetResult()。
         }
     }
 ```
-执行完`zygoteWriter.write(msgStr);zygoteWriter.flush()`后，进程间的socket已经完成。在Zygote进程流程时就提到过，zygote会开启socket，等待来自AMS的
-连接，完成相对应的任务。关键代码为：
+执行完`zygoteWriter.write(msgStr);zygoteWriter.flush()`后，进程间的socket已经完成。在Zygote进程流程时就提到过，zygote会开启socket，
+等待来自AMS的连接，完成相对应的任务。关键代码为：
 ```
  caller = zygoteServer.runSelectLoop(abiList);
 ```
@@ -277,8 +277,8 @@ Runnable runSelectLoop(String abiList) {
     }
 ```
 从socket中读取到通信信息后会执行到ZygoteConnection#processOneCommand(),从而再fork出一个子进程，通过handleChildProc() -> 
-ZygoteInit.zygoteInit()。到这个ZygoteInit就有点似曾相识了:与zygote fork出system_server进程走的同样的流程,最后同过反射获取到SystemServer，
-执行它的main方法。这里的区别就是反射获取的是ActivityThread，而不是SystemServer。
+ZygoteInit.zygoteInit()。到这个ZygoteInit就有点似曾相识了:与zygote fork出system_server进程走的同样的流程,最后同过反射获取到
+SystemServer，执行它的main方法。这里的区别就是反射获取的是ActivityThread，而不是SystemServer。
 
 ###### 3.1 ActivityThread (Activity启动)
 ActivityThread是Android应用程序的入口，也是任何一个进程的主线程入口。可能会有人理解为ActivityThread就是主线程。
@@ -390,8 +390,8 @@ mClient.scheduleTransaction(this): mClient是IApplicationThread的实例,所以�
  }
 ```
  ->  ActivityThread?#scheduleTransaction()  -> 
-可以看到，实际上又是ActivityThread去调用scheduleTransaction(),但是在ActivityThread类没有找到scheduleTransaction()这个方法。最后在它的父类
-ClientTransactionHandler 中发现了这个方法：发送一个`EXECUTE_TRANSACTION`的事件消息。
+可以看到，实际上又是ActivityThread去调用scheduleTransaction(),但是在ActivityThread类没有找到scheduleTransaction()这个方法。最后在它
+ 的父类ClientTransactionHandler 中发现了这个方法：发送一个`EXECUTE_TRANSACTION`的事件消息。
 ```
 void scheduleTransaction(ClientTransaction transaction) {
     transaction.preExecute(this);
@@ -480,21 +480,22 @@ public void callActivityOnCreate(Activity activity, Bundle icicle) {
         // 省略代码
     }
 ```
-调用了Activity的performCreate(icicle)，最后调用自己的onCreate()方法，也就是创建Activity时重写的那个onCreate()方法。至此，Activity被创建启动，开始
-Activity的生命周期。    
-本小结源码跟踪是关联Launcher的启动，但是同时也是Activity的启动流程，二者都是类似的。Launcher先fork出一个新进程供ActivityThread运行，activity是依赖
-ActivityThread的活动。总的说Launcher启动可以分为2个步骤：
+调用了Activity的performCreate(icicle)，最后调用自己的onCreate()方法，也就是创建Activity时重写的那个onCreate()方法。至此，
+Activity被创建启动，开始Activity的生命周期。    
+本小结源码跟踪是关联Launcher的启动，但是同时也是Activity的启动流程，二者都是类似的。Launcher先fork出一个新进程供ActivityThread运行
+，activity是依赖ActivityThread的活动。总的说Launcher启动可以分为2个步骤：
 * zygote fork新进程，ActivityThread启动；
 * Activity启动；
 
 
 ###### 3.2 Application的创建。   
-前面在ActivityThread的执行流程中提到调用了AMS服务端的方法，并在过程中创建了Application。创建Application的代码片段在AMS#attachApplicationLocked()
+前面在ActivityThread的执行流程中提到调用了AMS服务端的方法，并在过程中创建了Application。创建Application的代码片段在
+AMS#attachApplicationLocked()
 ```
  thread.bindApplication( /* 省略参数 */  );
 ```
-thread是IApplicationThread的实例。这个IApplicationThread是一个本地binder，它的服务端是ApplicationThread，是ActivityThread的一个内部类。 ->
-ApplicationThread#bindApplication(): 这个方法最终会将application数据通过Handler发送类型 `H.BIND_APPLICATION`发送出
+thread是IApplicationThread的实例。这个IApplicationThread是一个本地binder，它的服务端是ApplicationThread，是ActivityThread的
+一个内部类。 ->ApplicationThread#bindApplication(): 这个方法最终会将application数据通过Handler发送类型 `H.BIND_APPLICATION`发送出
 去,最后到handleBindApplication()方法处理。 -> 
 ApplicationThread#handleBindApplication(): 在这个方法里会创建出Application以及调用他的onCreate()方法。先看创建。在
 `app = data.info.makeApplication(data.restrictedBackupMode, null);`。data也是在ActivityThread的一个内部类：

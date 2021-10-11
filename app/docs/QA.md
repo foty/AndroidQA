@@ -30,7 +30,7 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 * 原因
 * 解决方案
 
-引起内存泄漏的常见地方或者操作有handler，单例，(广播、消息事件)注册与反注册、Cursor操作，IO流操作等。
+引起内存泄漏的常见地方或者操作有handler，单例，(广播、消息事件)注册与反注册，Cursor操作，IO流操作，Dialog，fragment等等。
 
 <p>
 
@@ -67,4 +67,9 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 
 <p>
 
-##### 下一课题ing
+##### 事件分发机制  
+或许阅读recyclerview的源码对嵌套滚动会有更深刻的认识。
+
+<p>
+
+##### 未完待续
