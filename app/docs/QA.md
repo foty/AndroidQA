@@ -75,7 +75,9 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 <p>
 
 ##### 全埋点技术系列
-
+涉及到编译流程、字节码、ASM、gradle插件原理、APT等等
 <p>
 
-##### 全埋点技术系列
+##### 谈谈gradle的Transform 和 APT(Annotation Processor Tool 注释处理器)   
+构建技术.md
+<p>

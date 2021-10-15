@@ -25,7 +25,7 @@
 * 启动流程 (√)
 * zygote、AMS、PMS、WMS (√)
 * 签名机制
-* apk打包流程
+* apk打包流程(AAPT Android Asset Packaging Tool android资源打包工具) 
 * 编译注解、APT(Annotation Processing Tool,即注解处理器)
 * 依赖注入(DI)
 * ASM插桩，Hook，字节码
