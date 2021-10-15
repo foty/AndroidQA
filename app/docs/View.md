@@ -4,6 +4,7 @@
 * 动画
 * 事件分发
 * 常见问题
+
  
 ##### 1、(加载)Window、PhoneWindow、DecorView
 在跟踪ActivityThread启动activity最后阶段的时候就有提到过window，就是在ActivityThread#performLaunchActivity()，看到这段代码：
@@ -355,9 +356,7 @@ View的绘制关键就3部分
  onMeasure()  
  onLayout()  
  onSizeChanged()  
- onDraw()  
- 
- 
+ onDraw()
 
 ##### 2、View的绘制流程
 Activity的onCreate()方法结束，进入到onResume()。但是在这之前在ActivityThread会先执行handleResumeActivity():
@@ -556,7 +555,8 @@ debug日志，注释等)。
             if (mViewLayoutDirectionInitial == View.LAYOUT_DIRECTION_INHERIT) { //如果之前没有设置布局方向，则设置布局方向
                 host.setLayoutDirection(config.getLayoutDirection());
             }
-            host.dispatchAttachedToWindow(mAttachInfo, 0);
+            // 会触发View.onAttachedToWindow()的回调，并且只会执行一次，注意回调在3大流程之前。
+            host.dispatchAttachedToWindow(mAttachInfo, 0); 
             mAttachInfo.mTreeObserver.dispatchOnWindowAttachedChange(true);
             dispatchApplyInsets(host);
         } else { // 不是第一次绘制
@@ -2104,10 +2104,6 @@ performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`�
 总结一波view绘制设计的API调用链图：  
 [view绘制.jpg]
 
- 
- 
-
-
 ##### [总结]View绘制核心方法performTraversals内各大流程方法调用顺序示意图
 private void performTraversals() { 
  // 准备阶段
@@ -2198,12 +2194,10 @@ ViewGroup的布局参数基本类，有多个重载方法：
 * LayoutParams(LayoutParams source)： 会克隆源的宽度和高度值。
 * LayoutParams()
 
-
 ##### View的保存与恢复
 就是View中的2个API,还包括一个保存的对象SavedState，实现了Parcelable接口。一般将保存内容存放到这个对象里面。
 * Parcelable onSaveInstanceState()
 * void onRestoreInstanceState(Parcelable state)
-
 
 ##### 自定义控件掌握
 会自定义view控件。提几个优化细节，或者比较偏的知识。  
@@ -2247,7 +2241,7 @@ a.recycle();
 
 
 ##### 常见问题
-* 首次 View的绘制流程是在什么时候触发的？   
+* 首次View的绘制流程是在什么时候触发的？   
 考验api流程了，关键如下：ActivityThread#handleResumeActivity() -> WindowManagerImpl#addView()->WindowManagerGlobal#addView() 
 -> ViewRootImpl()setView() -> ViewRootImpl#requestLayout()。  
 所以答案是在 ActivityThread的handleResumeActivity()方法。
@@ -2287,7 +2281,7 @@ onLayout()方法，不用重写layout()。
 调用 API requestLayout()或invalidate。
 
 
-* requestLayout() 和 invalidate() 的流程、区别   
+* requestLayout() 和 invalidate() 的流程、区别    
 1、首先看到View中的requestLayout()方法:
 ```
     public void requestLayout() {
@@ -2476,7 +2470,7 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
 
 
 * invalidate() 和 postInvalidate()的区别?
-invalidate()在主线程中使用，postInvalidate()可以在非主线程使用，其中使用了handler作为桥梁。
+invalidate()在主线程中使用；postInvalidate()可以在非主线程使用，其中使用了handler作为桥梁。
 
 
 * 为什么onCreate()获取不到View的宽高?  
@@ -2554,15 +2548,23 @@ getMeasuredWidth()方法获得的值是setMeasuredDimension方法设置的值，
 值是 <= getMeasuredWidth()的。
 
 
+* View的onAttachedToWindow,onDetachedFromWindow调用时机，使用场景是什么？  
+顾名思义，onAttachedToWindow()是在activity对应的window被添加的时候调用，onDetachedFromWindow()就是window分离的时候调用(OnDestroy)。
+onAttachedToWindow()可以追溯到ActivityThread#handleResumeActivity()的WindowManager.addView(decor),也就是绘制流程那一套。
+最终来到ViewRootImpl#performTraversals()的`host.dispatchAttachedToWindow(mAttachInfo, 0);`处。并且只会执行一次，回调时机
+在3大流程之，前所以在这个方法去获取不到view的宽高。  
+onDetachedFromWindow()可追溯到ActivityThread#handleDestroyActivity()的WindowManager.removeViewImmediate()。 
+最后到ViewRootImpl。ViewRootImpl#die() --> ViewRootImpl#doDie() -->ViewRootImpl#dispatchDetachedFromWindow()。
+
+
 * 相对布局、线性布局、帧布局效率关系?
 
 * 自定义View如何考虑机型适配。
 
 * 自定义View的优化方案。
 
-* Android View绘制和屏幕刷新机制(VSync?、Choreographer?、双缓存?)   
-https://www.jianshu.com/p/6c8045a9c015   
-
+* Android View绘制和屏幕刷新机制(VSync?、Choreographer?、双缓存?)
+<https://www.jianshu.com/p/6c8045a9c015>
 1.显示系统的基础知识：
 >在一个典型的显示系统中，一般包括CPU、GPU、Display三个部分， CPU负责计算帧数据，把计算好的数据交给GPU，GPU会对图形数据进行渲染，
 渲染好后放到buffer(图像缓冲区)里存起来，然后Display(屏幕或显示器)负责把buffer里的数据呈现到屏幕上。简单说就是cpu计算好交给gpu，
@@ -2648,7 +2650,6 @@ View是通过刷新来重绘视图，系统通过发出VSync信号来进行屏�
 * 描述一下getX()、getRawX()、getTranslationX()
 
 * Interpolator和TypeEvaluator是什么，有什么用
-
 
 
 

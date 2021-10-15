@@ -1,3 +1,5 @@
+感谢玩安卓<https://wanandroid.com/>提供方向以及相关资料
+
 ##### Android 项目中asset目录和res的区别 
 * res中存放可编译的资源文件,这种资源文件系统会在R.java里面自动生成该资源文件的ID,(除了raw,raw不会被编译);
 * res下的文件夹都是有特殊含义的,如anim特指动画类,raw指音频类等等。不能顺便创建文件夹;
@@ -72,4 +74,8 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 
 <p>
 
-##### 未完待续
+##### 全埋点技术系列
+
+<p>
+
+##### 全埋点技术系列

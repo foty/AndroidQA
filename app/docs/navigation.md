@@ -24,14 +24,15 @@
 #### frameWork与编译
 * 启动流程 (√)
 * zygote、AMS、PMS、WMS (√)
-* apk打包流程
 * 签名机制
+* apk打包流程
 * 编译注解、APT(Annotation Processing Tool,即注解处理器)
 * 依赖注入(DI)
 * ASM插桩，Hook，字节码
 * AOP
 * 进程、线程(一个应用启动有几个进程)
 * 插件化
+* 全埋点技术
 ...
 
 #### 框架原理
