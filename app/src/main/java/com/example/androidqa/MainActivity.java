@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.os.Build;
 import android.os.Bundle;
@@ -14,6 +15,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
+import android.view.animation.LinearInterpolator;
 import android.widget.TextView;
 
 import java.lang.reflect.Method;
@@ -45,6 +47,9 @@ public class MainActivity extends AppCompatActivity {
 
 
         //testHandler(handler);
+        TextView tv = new TextView(this);
+        ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(tv,"translationX",0,100).setDuration(1 * 1000);
+        objectAnimator.start();
 
     }
 
