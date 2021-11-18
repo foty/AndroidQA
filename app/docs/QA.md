@@ -1,4 +1,4 @@
-感谢玩安卓<https://wanandroid.com/>提供方向以及相关资料
+感谢玩安卓<https://wanandroid.com/>问答板块提供方向以及相关资料，以此学习与总结。
 
 ##### Android 项目中asset目录和res的区别 
 * res中存放可编译的资源文件,这种资源文件系统会在R.java里面自动生成该资源文件的ID,(除了raw,raw不会被编译);
@@ -20,8 +20,7 @@
 
 <p>
 
-##### 已知“onSaveInstanceState 会在系统意外杀死 Activity 时调用，或者横纵屏切换的时候调用”。那么随着Android SDK版本的变化，这一方法的调用时机有哪些变化？     
-
+##### “onSaveInstanceState 会在系统意外杀死 Activity 时调用，或者横纵屏切换的时候调用”。那么随着Android SDK版本的变化，这方法的调用时机有哪些变化？
 Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：    
 * targetSdkVersion低于11的app，onSaveInstanceState方法会在Activity.onPause之前回调；
 * targetSdkVersion低于28的app，则会在onStop之前回调；
@@ -31,7 +30,6 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 ##### 内存泄漏  
 * 原因
 * 解决方案
-
 引起内存泄漏的常见地方或者操作有handler，单例，(广播、消息事件)注册与反注册，Cursor操作，IO流操作，Dialog，fragment等等。
 
 <p>
@@ -59,19 +57,18 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 从源码开始到view有以下几个点：
 * Window、WindowManager和WMS(WindowManagerService)
 * view的绘制
-
-以上详情见View.md
+详情见View.md
 
 <p>
 
 ##### 并发(锁)
 注意比较常见的同步代码的手段如：volatile，synchronize，cas。了解他们的概念，工作原理。
-
+详细见 并发(锁).md
 <p>
 
 ##### 事件分发机制  
 或许阅读recyclerview的源码对嵌套滚动会有更深刻的认识。
-
+详细见 事件分发.md
 <p>
 
 ##### 全埋点技术系列
@@ -85,4 +82,27 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 ##### android中的动画(与view相关)
 动画.md
 <p>
+
+##### ANR是什么，产生的原因有哪些
+ANR，即Application Not Responding，应用无响应。在AMS收到`SHOW_NOT_RESPONDING_UI_MSG`消息之后会弹出，产生原因有：
+* 触摸事无响应(5s)
+* Service超时(20s)
+* 广播超时 (10s)
+<p>
+
+##### SharedPreferences有什么优缺点。
+优点：
+* 轻量，使用特简单方便；
+* 以xml形式保存本地，软件卸载也会一并删除，无污染。
+
+缺点：
+* 存在磁盘读写，从内存保存到磁盘，或者从磁盘读取到内存，IO瓶颈；
+* 多线程情况下效率低下；
+* 不支持跨进程；
+* 不适合存储大量数据；
+
+改良：  
+从commit()(同步写入:提交一次，写入到磁盘一次)提交优化到使用apply()提交(并非每次提交都会写入到磁盘，异步写入)。
+需要跨进程，可以使用微信开源的MMKV。
+  
 
