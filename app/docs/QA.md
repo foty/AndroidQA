@@ -104,5 +104,22 @@ ANR，即Application Not Responding，应用无响应。在AMS收到`SHOW_NOT_RE
 改良：  
 从commit()(同步写入:提交一次，写入到磁盘一次)提交优化到使用apply()提交(并非每次提交都会写入到磁盘，异步写入)。
 需要跨进程，可以使用微信开源的MMKV。
-  
+<p>
+
+##### 编译速度优化(具体方面，考虑实操)。
+* transform增量编译 (最难的)
+* 不使用动态版本号
+* 源码抽成library放maven
+* 修改开发工具配置
+<p>
+
+##### 哪些 Context调用 startActivity 需要设置NEW_TASK,为什么   
+BroadcastReceiver，Service，Application，ContentProvider 中的Context启动activity都是需要设置NEW_TASK。原因如下：
+1、Context调用startActivity(),实际上是它的实现类ContextImpl来启动的。也就是说在Context的包装类ContextWrapper中的mBase是ContextImpl的实例。 
+2、在ContextImpl启动activity会检查是否含有NEW_TASK这一个flag。如果没有将会抛出异常。都知道activity是运行在任务栈中的，上面组件本身都没有任务栈，
+所以必须要依附一个任务栈。
+3、另外补充为什么Activity启动不需要设置。因为它集成Context后重写了startActivity()方法，默认新启动的activity属于自己同一个任务栈(4种启动模式中
+的默认模式)。
+<p>
+
 
