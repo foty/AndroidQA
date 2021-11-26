@@ -2470,11 +2470,33 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
 
 
 * invalidate() 和 postInvalidate()的区别?
-invalidate()在主线程中使用；postInvalidate()可以在非主线程使用，其中使用了handler作为桥梁。
+> invalidate()在主线程中使用；postInvalidate()可以在非主线程使用，其中使用了handler作为桥梁。
 
 
-* 为什么onCreate()获取不到View的宽高?  
-因为view的绘制是在onResume()之后才开始去绘制的，具体在ActivityThread#handleResumeActivity()方法内。
+* 为什么onCreate()获取不到View的宽高?
+> 因为view的绘制是在onResume()之后才开始去绘制的，具体在ActivityThread#handleResumeActivity()方法内。
+  
+
+* 在onResume()使用`handler.postRunnable`能获取到View的宽高吗?
+不能，onResume()触发在ActivityThread的performResumeActivity()方法，handleResumeActivity()方法内才有将WindowManager添加DecorView，才有了绘
+制流程。performResumeActivity()方法在handleResumeActivity()之前执行。等于说onResume回调时，还没开始绘制。
+  
+
+* 在onResume()使用`view.postRunnable`能获取到View的宽高吗?
+能，这个要区分一下上面一个问题。先看到View的这个方法  
+```
+public boolean post(Runnable action) {
+ final AttachInfo attachInfo = mAttachInfo;
+ if (attachInfo != null) {
+     return attachInfo.mHandler.post(action);
+ }
+ getRunQueue().post(action);
+ return true;
+    }
+```
+先判断mAttachInfo是否为空(或者说这个View是否初始化过(绘制))，不为空自然能拿到view的宽高了。如果为null则通过getRunQueue()来发送，通过源码可以发现在
+在View#dispatchAttachWindow()和ViewRootImp#performTraversals()分别有调用，来执行里面的action。而performTraversals()是绘制的开始，并且会发送
+同步屏障阻碍同步消息的执行。这时候getRunQueue()发送的消息就只能在同步屏障解除后才能执行了，这时候View已经绘制完了。
 
 
 * MeasureSpec是什么  

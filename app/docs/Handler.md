@@ -286,7 +286,7 @@ epoll的对比与优势：
 > 上面总结。  
 
 * 2、子线程中怎么使用 Handler?
-> 在创建Handelr对象前调用`Looper.prepare();`,在创建完后调用`Looper.loop();`。
+> 在创建Handler对象前调用`Looper.prepare();`,在创建完后调用`Looper.loop();`。
 
 * 3、MessageQueue获取消息是怎么等待?
 > 通过native方法`nativePollOnce()`来阻塞线程实现消息等待。`nativePollOnce()`则是由native层epoll机制中的epoll_wait()函数等待的。
