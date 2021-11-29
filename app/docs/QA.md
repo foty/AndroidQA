@@ -122,4 +122,42 @@ BroadcastReceiver，Service，Application，ContentProvider 中的Context启动a
 的默认模式)。
 <p>
 
+##### 同步屏障问题?
+看Handler.md，要了解是什么，拿来干什么。
+<p>
+
+##### "Android16.6ms刷新一次屏幕"引出 View中VSYNC内容
+View.md vsync 部分
+<p>
+
+##### 泛型擦除?  
+泛型类型在代码编译时会被擦除掉(一般情况下会被擦成Object类型，如果使用了上限通配符的话会被擦成extends右边的类型)。这么做的意义：
+1、可以在使用泛型的时候根据传入泛型类型的不同而使用对应类型的API；
+2、可以解决不必要的类型转换错误；    
+为什么编译时要擦除泛型?那为什么在运行后还能获取到?  
+编译时擦除泛型主要是为了兼容性吧，泛型在1.5版本后引入，兼容以前的版本。在运行后还能获取是因为编译器自动强转了类型。(查看前后字节码就能看到)，泛型擦除
+并不是真正的擦除，只是为了需要在运行时擦除泛型，编译时泛型类型还是会保存下来的。
+<p>
+
+##### 匿名内部类访问的外部类局部变量为什么要用final修饰，jdk8为啥不需要了。
+内部类使用的外部类局部变量是通过构造函数传递过去的，内部类使用的引用和外部类使用的并不是同一个(虽然值相同)。如果局部变量不是final的话，就可能会被修改，
+就会导致内部类和外部类使用的变量不同步，所以需要添加final，不允许重新赋值。jdk8是自动添加了final，和原来的一样(语法糖)。
+<p>
+
+##### 事件分发机制中的分发机制顺序默认是逆序的，有没有方法可以修改分发顺序？
+第一种： 重写dispatchTouchEvent()方法。
+第二种：
+1、调用ViewGroup#setChildrenDrawingOrderEnabled(true)来开启自定义顺序;
+2、重写ViewGroup#getChildDrawingOrder()方法来决定返回的子View;
+<p>
+
+##### ButterKnife原理
+后续再补原理。(更多黑科技看这儿<https://mp.weixin.qq.com/s/VIsip3Dw8LLyqBLUrgzVFA>)
+
+<p>
+
+###### Gradle中，BuildConfig这个类是如何生成的？
+
+
+
 
