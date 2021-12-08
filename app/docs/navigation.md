@@ -1,10 +1,10 @@
 
 #### Android相关基本知识 (刚需)
-* 四大组件
-* Handler
-* View 
-* 事件分发(滑动冲突处理)
-* 动画
+* 四大组件 [](android/activity.md)
+* Handler [](android/Handler.md)
+* View  [](android/View.md)
+* 事件分发(滑动冲突处理) [](android/事件分发.md)
+* 动画 [](android/动画.md)
 * 图片
 * 性能优化  
 * 序列化(Serializable与Parcelable)
@@ -23,18 +23,20 @@
 * GC
 * JVM
 * 类加载过程
-* 锁、并发
+* 锁、并发 [](java/并发(锁).md)
 * 泛型
 * 加密
 ...
 
 #### frameWork与编译
-* 启动流程 (√)
+* 启动流程 [](framework/启动流程.md)
 * zygote、AMS、PMS、WMS (√)
+  
 * 签名机制
 * apk打包流程(AAPT Android Asset Packaging Tool android资源打包工具) 
-* 编译注解、APT(Annotation Processing Tool,即注解处理器)
 * 依赖注入(DI)
+
+* 编译注解、APT(Annotation Processing Tool,即注解处理器) [](base_build/构建技术.md)
 * ASM插桩，Hook，字节码
 * AOP
 * 进程、线程(一个应用启动有几个进程)
