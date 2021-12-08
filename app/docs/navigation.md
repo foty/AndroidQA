@@ -1,12 +1,19 @@
-#### 基本知识
+
+#### Android相关基本知识 (刚需)
 * 四大组件
-* View  (√)
+* Handler
+* View 
 * 事件分发(滑动冲突处理)
-* Handler (√)
+* 动画
+* 图片
+* 性能优化  
 * 序列化(Serializable与Parcelable)
 * webView优化
 * JNI
-...
+* kotlin
+* flow
+* livedata
+* 协程
 
 #### java知识
 * 各版本特性
@@ -36,18 +43,18 @@
 ...
 
 #### 框架原理
-* RxJava 原理、操作符、背压
+* RecyclerView(缓存机制、滑动回收)
 * OkHttp
 * Glide
 * LruCache原理
 * Retrofit
-* Leaks
 * liveData (粘性事件导致数据倒灌---先setValue，再observer,还能收到事件)
 * ARouter
-* RecyclerView(缓存机制、滑动回收)
+* RxJava 原理、操作符、背压
+* Leaks
 ...
 
-#### 网络知识
+#### 计算机网络知识
 * http与https
 * TCP/UDP
 * HTTP1.0/HTTP2.0/HTTP3.0

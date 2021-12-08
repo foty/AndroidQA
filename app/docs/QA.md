@@ -36,15 +36,15 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 
 ##### Activity的启动流程 (API 28)
 启动流程涉及到以下多个点
-* android 中的消息机制(另开篇幅handler.md)
-* 同步屏障(消息机制。参见Handler.md)
+* android 中的消息机制(另开篇幅[](android/Handler.md))
+* 同步屏障(消息机制。参见[](android/Handler.md))
 * binder通信(另开篇幅)
-* zygote进程、system_server进程、AMS、Launcher启动 (见启动流程.md)
-* ActivityThread与Application (见启动流程.md)
+* zygote进程、system_server进程、AMS、Launcher启动 (见[](framework/启动流程.md))
+* ActivityThread与Application (见[](framework/启动流程.md))
 <p>
 
 ##### Handle消息机制
-详情见Handler.md部分，以及相关问题。
+详情见: [](android/Handler.md)部分，以及相关问题。
 
 <p>
 
@@ -57,18 +57,18 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 从源码开始到view有以下几个点：
 * Window、WindowManager和WMS(WindowManagerService)
 * view的绘制
-详情见View.md
+详情见: [](android/View.md)
 
 <p>
 
 ##### 并发(锁)
 注意比较常见的同步代码的手段如：volatile，synchronize，cas。了解他们的概念，工作原理。
-详细见 并发(锁).md
+详细见: [](java/并发(锁).md)
 <p>
 
 ##### 事件分发机制  
 或许阅读recyclerview的源码对嵌套滚动会有更深刻的认识。
-详细见 事件分发.md
+详细见 [](android/事件分发.md)
 <p>
 
 ##### 全埋点技术系列
@@ -76,11 +76,11 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 <p>
 
 ##### 谈谈gradle的Transform 和 APT(Annotation Processor Tool 注释处理器)   
-构建技术.md
+[](base_build/构建技术.md)
 <p>
 
 ##### android中的动画(与view相关)
-动画.md
+[](android/动画.md)
 <p>
 
 ##### ANR是什么，产生的原因有哪些
@@ -123,11 +123,11 @@ BroadcastReceiver，Service，Application，ContentProvider 中的Context启动a
 <p>
 
 ##### 同步屏障问题?
-看Handler.md，要了解是什么，拿来干什么。
+看[](android/Handler.md)，要了解是什么，拿来干什么。
 <p>
 
 ##### "Android16.6ms刷新一次屏幕"引出 View中VSYNC内容
-View.md vsync 部分
+[](android/View.md)的 vsync 部分
 <p>
 
 ##### 泛型擦除?  
@@ -157,6 +157,11 @@ View.md vsync 部分
 <p>
 
 ###### Gradle中，BuildConfig这个类是如何生成的？
+编译器自动生成的
+
+<p>
+
+##### Parcelable为什么效率会高于Serializable
 
 
 
