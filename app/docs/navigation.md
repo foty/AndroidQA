@@ -11,9 +11,7 @@
 * webView优化
 * JNI
 * kotlin
-* flow
-* livedata
-* 协程
+
 
 #### java知识
 * 各版本特性
