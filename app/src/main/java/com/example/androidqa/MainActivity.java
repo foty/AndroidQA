@@ -6,11 +6,13 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.MessageQueue;
+import android.os.PersistableBundle;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
@@ -26,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Log.d("lxx", "A onCreate");
 
         @SuppressLint("HandlerLeak") Handler handler = new Handler() {
             @Override
@@ -37,20 +40,77 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("lxx", "收到事件消息：msg.obj= " + i);
             }
         };
-
-       View view =  findViewById(R.id.tvHello);
-       Log.d("lxx", "view= "+ view);
-       while (view != null) {
-           view = (View) view.getParent();
-          Log.d("lxx", "parent= "+ view);
-       }
-
-
         //testHandler(handler);
-        TextView tv = new TextView(this);
-        ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(tv,"translationX",0,100).setDuration(1 * 1000);
-        objectAnimator.start();
 
+        TextView view = findViewById(R.id.tvHello);
+        view.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, MainBActivity.class));
+            }
+        });
+
+        // 递归父布局
+//        View child = view;
+//        Log.d("lxx", "view= " + view);
+//        while (child != null) {
+//            child = (View) child.getParent();
+//            Log.d("lxx", "parent= " + child);
+//        }
+
+        // 动画
+//        TextView tv = new TextView(this);
+//        ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(tv, "translationX", 0, 100).setDuration(1 * 1000);
+//        objectAnimator.start();
+
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Log.d("lxx", "A onSaveInstanceState");
+    }
+
+    @Override
+    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        Log.d("lxx", "A onRestoreInstanceState");
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d("lxx", "A onStart");
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        Log.d("lxx", "A onRestart");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d("lxx", "A onResume");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d("lxx", "A onPause");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.d("lxx", "A onStop");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d("lxx", "A onDestroy");
     }
 
     private void testHandler(Handler handler) {
