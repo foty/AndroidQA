@@ -89,16 +89,25 @@ startActivity(intent)
 > 显示启动是直接指定目标activity跳转，隐式启动是通过清单文件的Filter一一匹配寻找activity  。 
  
 * scheme使用场景,协议格式,如何使用。
+> scheme也就是配置activity的intent-filter。通常用作跨应用跳转。配置内容包括action、category、data。其中data又包括：host、path、port、scheme。
+> 其中scheme是协议名称，host是主机地址、port是端口号、path是具体路径。(scheme://host:port/path?...)
 
 数据传递(交互)问题    
-* Activity之间传递数据的方式Intent是否有大小限制，如果传递的数据量偏大，有哪些方案?
-* activity间传递数据的方式
-* 跨App启动Activity的方式,注意事项
+* Activity之间传递数据的方式Intent是否有大小限制?如果传递的数据量偏大，有哪些方案?
+> 限制在1MB以内。大数据量传递可以：
+> 1、通过压缩传递数据。比如对象转成json字符创传递；将不必要的属性使用transient修饰；
+> 2、通过事件消息传递。比如广播，eventbus，livedataBus等。
+
+* activity间传递数据的方式?
+> 1、intent传递；2、intent中的Bundle传递；3、公共静态变量；4、数据保存-获取形式传递，如sp，数据库等等；5、事件总线传递，如广播，各种bus等
+
+* 跨App启动Activity的方式,注意事项。
+> 使用隐式启动activity即可。注意配置正确filter信息。
 
 启动模式问题  
-* Activity任务栈是什么
-* activity的启动模式和使用场景
-* 有哪些Activity常用的标记位Flags
+* Activity任务栈是什么?
+* activity的启动模式和使用场景?
+* 有哪些Activity常用的标记位Flags?
 
 
 #### Service  
