@@ -32,15 +32,14 @@ startActivity(intent)
 * 显示启动： 应用内部跳转启动，无法启动应用外的页面，用途范围小于隐式启动。
 * 隐式启动： 能启动应用内的页面，也能启动应用外部的页面，具有一定保护作用。
 
-
 三、启动模式(!)
-四种启动模式: 
+主要有四种启动模式:
 * standard 标准(默认)模式：如同砌砖，每次都创建新的act都放在当前栈顶；如果存在相同的act，也同样创建。
 * singleTop 栈顶复用模式：当栈内不存在此activity时，创建新的act放到栈顶；如果存在，直接复用已存在的activity，不会重复创建新的相同act。
 * singleTask 栈内复用模式：当栈内不存在此activity时，创建新的act放到栈顶；如果存在，将会把此activity上面的所有act移除栈，该act成为栈顶实例。
 * singleInstance 单例模式：这里的单例是指栈单例。也就是说一个任务栈只存在一个act实例。如果该act存在也是直接复用，不会重新创建。
 
-启动模式的应用场景  
+启动模式的应用场景
 * 标准模式： 
 * 栈顶复用：适合启动频繁的页面。比如消息通知之类的，每个通知查看都启动一个新页面还是很烦的。
 * 栈内复用：适合有入口主页的界面，由主页散发到其他功能。比如浏览器主页，无论从哪启动浏览器，浏览器器主页只有一个；同时回到主页，将其他的页面关闭。
@@ -106,21 +105,39 @@ startActivity(intent)
 
 启动模式问题  
 * Activity任务栈是什么?
+> 任务栈也就是task，保存启动的activity实例。是一个栈结构，栈顶的activity实例就是显示在屏幕页面。
+
 * activity的启动模式和使用场景?
+> 看上面的[三、启动模式(!)](#ss)
+ 
 * 有哪些Activity常用的标记位Flags?
+> FLAG_ ACTIVITY_NEW_TASK: 指定Activity启动模式为"singleTask"
+> FLAG_ACTIVITY_SINGLE_TOP: 指定Activity启动模式为"singleTop"
 
 
 #### Service  
 
-* service 的生命周期，两种启动方式的区别
-* Service的两种启动方式？区别在哪
-* 如何保证Service不被杀死 ？
-* Service与Activity怎么实现通信
-* IntentService是什么,IntentService原理，应用场景及其与Service的区别
-* Service 的 onStartCommand 方法有几种返回值?各代表什么意思?
-* bindService和startService混合使用的生命周期以及怎么关闭
-* 用过哪些系统Service ？
-* 了解ActivityManagerService吗？发挥什么作用
+##### 1、关于Service基础知识
+service是四大基础组件之一，为后台服务。
+
+一、生命周期
+service的生命周期跟启动方式有关。启动service有2种方式，startService与 bindService。  
+startService: onCreate() -> onStartCommand() -> onDestroy();  
+bindService: onCreate() -> onBind() -> onUnBind() -> onDestroy()
+
+
+##### 2、Service问题收录
+
+* Service的两种启动方式?区别在哪?
+> 生命周期不多说。主要看下2者的区别。首先是start方式：  
+ 
+* bindService()和startService()混合使用的生命周期以及怎么关闭?
+* 如何保证Service不被杀死?
+* Service与Activity怎么实现通信?
+* IntentService是什么,IntentService原理，应用场景及其与Service的区别?
+* Service的onStartCommand()方法有几种返回值?各代表什么意思?
+* 用过哪些系统Service?
+* 了解ActivityManagerService吗?发挥什么作用?
 
 
 #### BroadcastReceiver
