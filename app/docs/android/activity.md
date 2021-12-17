@@ -129,23 +129,53 @@ bindService: onCreate() -> onBind() -> onUnBind() -> onDestroy()
 ##### 2、Service问题收录
 
 * Service的两种启动方式?区别在哪?
-> 生命周期不多说。主要看下2者的区别。首先是start方式：  
+> 生命周期不多说。主要看下2者的区别(序号1为start方式，序号2为bind方式)：
+> 1、生命周期不一样；方式1的生命周期为onCreate() -> onStartCommand() -> onDestroy()；方式2的生命周期是 onCreate() -> onBind() ->
+>   onUnBind() -> onDestroy()。
+> 2、停止方式不一样。方式1启动之后只有调用stopService()能停止服务。与调用者无关，即使调用者已经结束。方式2通过onUnbind()解除绑定，如果调用者结束该
+> 服务也会结束停止。
  
 * bindService()和startService()混合使用的生命周期以及怎么关闭?
+> 开启时先start后bind，停止时先stop后unbind，最后走才destroy(其实这个顺序可以调换)。
+
 * 如何保证Service不被杀死?
+> 保活问题
+ 
 * Service与Activity怎么实现通信?
+> 1、binder(aidl); 2、消息bus，比如广播、xxBus等。
+ 
 * IntentService是什么,IntentService原理，应用场景及其与Service的区别?
+> IntentService和service都是Android的Service基本组件，IntentService继承Service。启动方式都是一样。区别在于IntentService内部会开启一个子线程，
+> 通过Handler发送消息通知到`onHandleIntent()`方法中处理。并且处理完自己的任务后，service自动停止。换个说法就是如果要在service中执行耗时操作，
+> 可以直接使用IntentService。
+
 * Service的onStartCommand()方法有几种返回值?各代表什么意思?
-* 用过哪些系统Service?
-* 了解ActivityManagerService吗?发挥什么作用?
+> 4种。
+> START_NOT_STICKY： 进程被系统强制杀掉之后，不会重新创建service。
+> START_STICKY_COMPATIBILITY：(兼容版本)进程被系统杀死后，不确保是否能重新执行onStartCommand方法。
+> START_STICKY： 进程被系统强制杀掉之后，会重新创建service，并执行onStartCommand()回调方法，但不会保存Intent，所以重建的onStartCommand()回调方
+>                法的Intent参数为null。
+> START_REDELIVER_INTENT： 进程被系统强制杀掉之后，service会重建service并且会保存Intent，重建的intent能获取到相关信息。
 
 
 #### BroadcastReceiver
 
 * 广播的分类和使用场景
-* 广播的两种注册方式的区别
-* 广播发送和接收的原理
-* 本地广播和全局广播的区别
+> 有序广播、无序广播(没有优先级之分)；系统广播、非系统广播；  
+
+* 广播的两种注册方式的区别?
+> 2种注册方式为静态注册与动态注册。
+  静态注册：会在清单文件中配置广播的相关信息(action name)，直接使用`sendBroadcast(Intent)`发送广播。
+  动态注册：不配置到清单文件，直接new出相关Receiver实例，通过`registerReceiver()`方法注册，同样使用`sendBroadcast(Intent)`发送广播。注册的广播记 
+          得最后需要注销广播。
+> 区别：
+  1、生命周期不同。动态广播是非常驻型广播，跟随Activity生命周期；而静态广播是常驻型广播，与activity无关。
+  2、优先级不同。在同优先级的情况下，动态广播接收器优先级比静态广播接收器高。
+
+* 广播发送和接收的原理。
+> 
+  
+* 本地广播和全局广播的区别。
 
 
 #### ContentProvider
