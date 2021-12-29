@@ -173,16 +173,33 @@ bindService: onCreate() -> onBind() -> onUnBind() -> onDestroy()
   2、优先级不同。在同优先级的情况下，动态广播接收器优先级比静态广播接收器高。
 
 * 广播发送和接收的原理。
-> 
+> 先说总结：广播的发送和接收原理是在AMS+Binder+Handler共同作用下的一套通信机制。首先通过`sendBroadcast()`方法将一个广播以Binder机制发送到AMS,AMS从
+  广播接收器注册列表中找到对应的广播，通过Binder传递给广播接收器的分发器(ReceiverDispatcher)。分发器通过Handler发送广播到指定的接收器中，也就是
+  `onReceive()`回调方法。
   
 * 本地广播和全局广播的区别。
+> 本地广播：广播发送和接收只在应用内，与其他应用无关；只能动态注册，不能静态注册。典型例子就是`LocalBroadcastManager`类
+> 全局广播：可以发送到和接收其他应用的广播，能动态注册，也能静态注册。
 
 
 #### ContentProvider
 
+
 * 什么是ContentProvider及其使用
-* ContentProvider的权限管理
-* ContentProvider,ContentResolver,ContentObserver之间的关系
-* ContentProvider的实现原理
-* ContentProvider的优点
-* Uri是什么
+> 即内容提供者，也是四大组件之一，用于进程间数据(共享)交互(增删改查)。(跨进程通信)。
+
+* ContentProvider,ContentResolver,ContentObserver之间的关系?
+> ContentProvider内容提供者；ContentObserver内容观察者，作用是观察指定Uri数据库的变化，从而能做出响应的处理；ContentResolver内容解析器，用于解析
+  从内容提供者获取到的数据。ContentProvider获取到数据交给ContentResolver解析，同时Uri数据库发生变化时可以通过ContentObserver监听做处理。
+
+* ContentProvider的实现原理?
+> ContentProvider是进程间共享数据，它的主要共享方式就是通过binder。非要说原理的话就是进程启动时，ContentProvider就会被创建并注册到AMS，并且啊，
+  ContentProvider的启动比Application的启动还早。当需要使用某一个ContentProvider时，根据Uri找到指定的ContentProvider(binder形式)，就可以增删改
+  查了。
+
+* ContentProvider的优点?
+> 系统API,进程间通信安全简单,因为它是数据共享的方式。 
+
+* Uri是什么?
+> 统一资源标识符。标识ContentProvider。说白了就是名片。通过Uri找到对应的那个ContentProvider。格式为：
+  `schema/authority/path/id`。中文释义：纲要/权威/路径(表名)/id。schema通常固定为：content://。如："content://com.carson.provider/User/1"
