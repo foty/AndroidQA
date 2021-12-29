@@ -2242,47 +2242,47 @@ a.recycle();
 
 ##### 常见问题
 * 首次View的绘制流程是在什么时候触发的？   
-考验api流程了，关键如下：ActivityThread#handleResumeActivity() -> WindowManagerImpl#addView()->WindowManagerGlobal#addView() 
+> 考验api流程了，关键如下：ActivityThread#handleResumeActivity() -> WindowManagerImpl#addView()->WindowManagerGlobal#addView() 
 -> ViewRootImpl()setView() -> ViewRootImpl#requestLayout()。  
 所以答案是在 ActivityThread的handleResumeActivity()方法。
 
 
 * Activity、PhoneWindow、DecorView、ViewRootImpl 的关系？   
-包含关系大概为：Activity[Window->PhoneWindow[DecorView]],而ViewRootImpl可以说是DecorView的管家，继承了ViewParent接口，用来掌管View的各种事
+> 包含关系大概为：Activity[Window->PhoneWindow[DecorView]],而ViewRootImpl可以说是DecorView的管家，继承了ViewParent接口，用来掌管View的各种事
 件，包括 requestLayout、invalidate、dispatchInputEvent等等。
 
 
 * DecorView 的布局是什么样的？  
-DecorView实际构建的布局是分情况的，具体看到PhoneWindow#generateLayout()方法，根据各种不同情况来选择不一样的布局。但他们都会有一个id为content
+> DecorView实际构建的布局是分情况的，具体看到PhoneWindow#generateLayout()方法，根据各种不同情况来选择不一样的布局。但他们都会有一个id为content
 的FrameLayout布局，这个布局是setContentView(R.layout.xx)中的布局的直接父布局。
 
 
 * setContentView 的流程   
-Activity#setContentView() ->委托AppCompatDelegateImpl#setContentView() -> AppCompatDelegateImpl#ensureSubDecor()准备DecorView ->
+> Activity#setContentView() ->委托AppCompatDelegateImpl#setContentView() -> AppCompatDelegateImpl#ensureSubDecor()准备DecorView ->
 从DecorView找到id为content的布局，将view add进去。
 
 
 * 说说自定义view的几个构造函数   
-常用到的有3个方法，其参数情况分别是1个,2个,3个。1个参数的方法通常在创建对象是调用，也就是在代码中new；2个参数方法通常在写在xml文件中被解析加载时调用；最
+> 常用到的有3个方法，其参数情况分别是1个,2个,3个。1个参数的方法通常在创建对象是调用，也就是在代码中new；2个参数方法通常在写在xml文件中被解析加载时调用；最
 后一个通常不会自动被调用，需要手动调用。  
 
 
 * ViewGroup是怎么分发绘制的   
-大概是说ViewGroup的dispatchDraw()方法吧。`dispatchDraw()`是在View.draw()绘制步骤中onDraw()之后的下一步操作。顾名思义就是分发绘制，在View中是一
+> 大概是说ViewGroup的dispatchDraw()方法吧。`dispatchDraw()`是在View.draw()绘制步骤中onDraw()之后的下一步操作。顾名思义就是分发绘制，在View中是一
 个空实现。能分发子view绘制也只有ViewGroup。在dispatchDraw()会获取到子view的数量，分别调用它们的draw()方法完成子view的绘制。
 
 
 * onLayout() 和layout()的区别   
-onLayout()是父view，一般都是ViewGroup，确定子view位置调用的方法，通常会配合onMeasure()使用；而layout()是确定view本身位置调用的方法。一般只会重写
+> onLayout()是父view，一般都是ViewGroup，确定子view位置调用的方法，通常会配合onMeasure()使用；而layout()是确定view本身位置调用的方法。一般只会重写
 onLayout()方法，不用重写layout()。
 
 
 * 如何触发重新绘制？  
-调用 API requestLayout()或invalidate。
+> 调用 API requestLayout()或invalidate。
 
 
 * requestLayout() 和 invalidate() 的流程、区别    
-1、首先看到View中的requestLayout()方法:
+> 1、首先看到View中的requestLayout()方法:
 ```
     public void requestLayout() {
         if (mMeasureCache != null) mMeasureCache.clear();
@@ -2313,7 +2313,7 @@ onLayout()方法，不用重写layout()。
         }
     }
 ```
-从View中的requestLayout()方法可以看出，最终还是走的ViewRootImpl#requestLayout()方法。而ViewRootImpl#requestLayout()前面知道，会去调用
+> 从View中的requestLayout()方法可以看出，最终还是走的ViewRootImpl#requestLayout()方法。而ViewRootImpl#requestLayout()前面知道，会去调用
 scheduleTraversals()，触发一个完整的绘制流程。主要就是三大步骤：performMeasure()、performLayout()、performDraw()。   
 首先是performMeasure()，它最终回到View中的measure()方法，在View.measure()，能否触发onMeasure()主要看下面这点：
 ```
@@ -2336,7 +2336,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
      // ....
 }
 ```
-对于`forceLayout`的值,在requestLayout()的时候就说到mPrivateFlags设置PFLAG_FORCE_LAYOUT。所以这里的forceLayout == true。   
+> 对于`forceLayout`的值,在requestLayout()的时候就说到mPrivateFlags设置PFLAG_FORCE_LAYOUT。所以这里的forceLayout == true。   
 然后是 performLayout()，也是会到View.layout()方法：
 ```
 //....
@@ -2356,7 +2356,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
       //......
   }   
 ```
-看到if中的条件，mPrivateFlags是否又被设置PFLAG_LAYOUT_REQUIRED标志。在performMeasure()流程中是设置了PFLAG_LAYOUT_REQUIRED标志，所以onLayout()是
+> 看到if中的条件，mPrivateFlags是否又被设置PFLAG_LAYOUT_REQUIRED标志。在performMeasure()流程中是设置了PFLAG_LAYOUT_REQUIRED标志，所以onLayout()是
 一定能执行到的。最后看到 performDraw()。performDraw流程会经历：  
 performDraw() -> draw() -> drawSoftware() -> View.draw()。前面都是发生在ViewRootImpl中，看到View.draw():  
 ```
@@ -2374,7 +2374,7 @@ public void draw(Canvas canvas) {
      //.......
  }           
 ```
-可以看到这里的onDraw()的触发与是否有设置FADING_EDGE_HORIZONTAL，FADING_EDGE_VERTICAL2个标志位有关，整个类搜索后，没有发现哪个地方是一定设置此标志。
+> 可以看到这里的onDraw()的触发与是否有设置FADING_EDGE_HORIZONTAL，FADING_EDGE_VERTICAL2个标志位有关，整个类搜索后，没有发现哪个地方是一定设置此标志。
 回到ViewRootImpl中看到draw():
 ```
 private boolean draw(boolean fullRedrawNeeded) {
@@ -2393,10 +2393,10 @@ private boolean draw(boolean fullRedrawNeeded) {
     //......
 }
 ```
-同样的也没有绝对的一个标志，类似`PFLAG_FORCE_LAYOUT`,`PFLAG_LAYOUT_REQUIRED`控制onLayout(),onMeasure()回调。从`drawSoftware()`上来看，
+> 同样的也没有绝对的一个标志，类似`PFLAG_FORCE_LAYOUT`,`PFLAG_LAYOUT_REQUIRED`控制onLayout(),onMeasure()回调。从`drawSoftware()`上来看，
 onDraw()跟dirty区域相关，或者在执行动画等等。   
-   
-2、invalidate()  
+
+> 2、invalidate()  
 看到View.invalidate()，间接调用几个方法后来到 invalidateInternal(...)方法：
 ```
 void invalidateInternal(int l, int t, int r, int b, boolean invalidateCache,boolean fullInvalidate) {
@@ -2419,7 +2419,7 @@ void invalidateInternal(int l, int t, int r, int b, boolean invalidateCache,bool
       //......
     }
 ```
-看到`p.invalidateChild()`，其中p就是mParent，也就是父布局的意思，经过view树向上递归，会来到ViewRootImpl.invalidateChild()方法，然后调用到
+> 看到`p.invalidateChild()`，其中p就是mParent，也就是父布局的意思，经过view树向上递归，会来到ViewRootImpl.invalidateChild()方法，然后调用到
 invalidateChildInParent()方法：
 ```
 public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
@@ -2448,7 +2448,7 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
   return null;
 }
 ```
-上面主要就是对dirty区域重新计算校验，最后来到`invalidateRectOnScreen(dirty)`:
+> 上面主要就是对dirty区域重新计算校验，最后来到`invalidateRectOnScreen(dirty)`:
 ```
     private void invalidateRectOnScreen(Rect dirty) {
         final Rect localDirty = mDirty;
@@ -2464,7 +2464,7 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
         }
     }
 ```
-可以看到，最后还是调用了`scheduleTraversals()`触发绘制流程，但是由于没有设置`PFLAG_FORCE_LAYOUT`,`PFLAG_LAYOUT_REQUIRED`，直接设置`PFLAG_DIRTY`
+> 可以看到，最后还是调用了`scheduleTraversals()`触发绘制流程，但是由于没有设置`PFLAG_FORCE_LAYOUT`,`PFLAG_LAYOUT_REQUIRED`，直接设置`PFLAG_DIRTY`
 标志，不会走测量和布局的两个流程。  
 所以 invalidate()与 requestLayout()都会触发View树重新绘制。但是invalidate()不会触发测量与Layout过程，而requestLayout()一定能触发测量与layout过程。
 
@@ -2478,12 +2478,12 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
   
 
 * 在onResume()使用`handler.postRunnable`能获取到View的宽高吗?
-不能，onResume()触发在ActivityThread的performResumeActivity()方法，handleResumeActivity()方法内才有将WindowManager添加DecorView，才有了绘
+> 不能，onResume()触发在ActivityThread的performResumeActivity()方法，handleResumeActivity()方法内才有将WindowManager添加DecorView，才有了绘
 制流程。performResumeActivity()方法在handleResumeActivity()之前执行。等于说onResume回调时，还没开始绘制。
   
 
 * 在onResume()使用`view.postRunnable`能获取到View的宽高吗?
-能，这个要区分一下上面一个问题。先看到View的这个方法  
+> 能，这个要区分一下上面一个问题。先看到View的这个方法  
 ```
 public boolean post(Runnable action) {
  final AttachInfo attachInfo = mAttachInfo;
@@ -2494,27 +2494,27 @@ public boolean post(Runnable action) {
  return true;
     }
 ```
-先判断mAttachInfo是否为空(或者说这个View是否初始化过(绘制))，不为空自然能拿到view的宽高了。如果为null则通过getRunQueue()来发送，通过源码可以发现在
+> 先判断mAttachInfo是否为空(或者说这个View是否初始化过(绘制))，不为空自然能拿到view的宽高了。如果为null则通过getRunQueue()来发送，通过源码可以发现在
 在View#dispatchAttachWindow()和ViewRootImp#performTraversals()分别有调用，来执行里面的action。而performTraversals()是绘制的开始，并且会发送
 同步屏障阻碍同步消息的执行。这时候getRunQueue()发送的消息就只能在同步屏障解除后才能执行了，这时候View已经绘制完了。
 
 
 * MeasureSpec是什么  
-MeasureSpec是一个类，表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格
+> MeasureSpec是一个类，表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格
 大小SpecSize。通常用来说明应该如何测量这个View。
 
 
 * 子View创建MeasureSpec创建规则是什么?   
-可以看到`2.1、测量模式`板块下的表格，父布局的MeasureSpec与view自身的宽高属性决定的。
+> 可以看到`2.1、测量模式`板块下的表格，父布局的MeasureSpec与view自身的宽高属性决定的。
 
 
 * 自定义View的wrap_content属性不起作用的原因?  
-在View的默认测量模式下，View的测量模式是AT_MOST或者EXACTLY时，view的大小会被设置成MeasureSpec的specSize。而当view使用wrap_content属性时，最终view
-的MeasureSpec都会被转换成AT_MOST，也就是父布局的大小了。
+> 在View的默认测量模式下，View的测量模式是AT_MOST或者EXACTLY时，view的大小会被设置成MeasureSpec的specSize。而当view使用wrap_content属性时，最
+终view的MeasureSpec都会被转换成AT_MOST，也就是父布局的大小了。
 
 
 * View#post与Handler#post的区别    
-看到View.post()方法：
+> 看到View.post()方法：
 ```
 public boolean post(Runnable action) {
    final AttachInfo attachInfo = mAttachInfo;
@@ -2525,7 +2525,7 @@ public boolean post(Runnable action) {
    return true;
 }
 ```
-可以看到View#post当View已经attach到window，直接调用UI线程的Handler发送runnable。如果View还未attach到window，则通过getRunQueue().post()。这个
+> 可以看到View#post当View已经attach到window，直接调用UI线程的Handler发送runnable。如果View还未attach到window，则通过getRunQueue().post()。这个
 getRunQueue()获取的是HandlerActionQueue实例。等到执行performTraversals()方法时再将runnable发送出去。   
 RunQueue的作用类似于MessageQueue，可以保存runnable。可以看到HandlerActionQueue里的post():
 ```
@@ -2543,7 +2543,7 @@ RunQueue的作用类似于MessageQueue，可以保存runnable。可以看到Hand
         }
     }
 ```
-HandlerAction是一个静态内部类，只有2个成员变量：Runnable与delay time。在post方法仅仅是将构建的HandlerAction添加到HandlerAction数组中。那么里面的
+> HandlerAction是一个静态内部类，只有2个成员变量：Runnable与delay time。在post方法仅仅是将构建的HandlerAction添加到HandlerAction数组中。那么里面的
 runnable到底什么时候被执行呢?根据HandlerAction数组的调用情况，可以在这个类中找到一个方法`executeActions()`：
 ```
     public void executeActions(Handler handler) {
@@ -2558,20 +2558,20 @@ runnable到底什么时候被执行呢?根据HandlerAction数组的调用情况�
         }
     }
 ```
-通过Handler将runnable发送出去执行。搜索executeActions方法的调用。发现在ViewRootImpl#performTraversals()和View#dispatchAttachedToWindow()有
+> 通过Handler将runnable发送出去执行。搜索executeActions方法的调用。发现在ViewRootImpl#performTraversals()和View#dispatchAttachedToWindow()有
 调用。performTraversals()方法是View的绘制流程的开端,所以在执行绘制的过程中就会将HandlerAction数组保存的runnable执行。调用处代码为
 `getRunQueue().executeActions(mAttachInfo.mHandler);`。在另外dispatchAttachedToWindow()的调用可以追溯到performTraversals()方法的
 `host.dispatchAttachedToWindow(mAttachInfo, 0);`。并且调用时间比getRunQueue().executeActions()还要靠前。
 
 
 * getWidth()和getMeasureWidth()的区别  
-getMeasuredWidth()方法获得的值是setMeasuredDimension方法设置的值，它的值在measure方法运行后就会确定。可以说是一个预期值。getWidth()方法在View中
+> getMeasuredWidth()方法获得的值是setMeasuredDimension方法设置的值，它的值在measure方法运行后就会确定。可以说是一个预期值。getWidth()方法在View中
 计算规则是mRight-mLeft。这俩是在layout()方法中通过setFrame()会重新赋值，是view的最终显示宽度。因为可能会有padding以及margin值存在。getWidth()的
 值是 <= getMeasuredWidth()的。
 
 
 * View的onAttachedToWindow,onDetachedFromWindow调用时机，使用场景是什么？  
-顾名思义，onAttachedToWindow()是在activity对应的window被添加的时候调用，onDetachedFromWindow()就是window分离的时候调用(OnDestroy)。
+> 顾名思义，onAttachedToWindow()是在activity对应的window被添加的时候调用，onDetachedFromWindow()就是window分离的时候调用(OnDestroy)。
 onAttachedToWindow()可以追溯到ActivityThread#handleResumeActivity()的WindowManager.addView(decor),也就是绘制流程那一套。
 最终来到ViewRootImpl#performTraversals()的`host.dispatchAttachedToWindow(mAttachInfo, 0);`处。并且只会执行一次，回调时机
 在3大流程之，前所以在这个方法去获取不到view的宽高。  
@@ -2655,14 +2655,14 @@ SurfaceView是Android中一种比较特殊的视图(View)，它跟普通View最�
 
 
 * 为什么使用SurfaceView  
-View是通过刷新来重绘视图，系统通过发出VSync信号来进行屏幕的重绘，刷新的时间间隔是16ms,如果可以在16ms以内将绘制工作完成，则没有任何问题，
+> View是通过刷新来重绘视图，系统通过发出VSync信号来进行屏幕的重绘，刷新的时间间隔是16ms,如果可以在16ms以内将绘制工作完成，则没有任何问题，
 如果绘制过程逻辑很复杂，并且界面更新还非常频繁，这时候就会造成界面的卡顿，影响用户体验，为此Android提供了SurfaceView来解决这一问题。
 
 
 * View与surfaceView的区别?
-1、View适用于主动更新的情况，而SurfaceView更适用于被动更新的情况，比如频繁刷新界面。  
-2、View在主线程中刷新页面，而SurfaceView在子线程刷新页面。  
-3、View在绘图时没有实现双缓冲机制，SurfaceView在底层机制中实现双缓冲机制。  
+> 1、View适用于主动更新的情况，而SurfaceView更适用于被动更新的情况，比如频繁刷新界面。  
+  2、View在主线程中刷新页面，而SurfaceView在子线程刷新页面。  
+  3、View在绘图时没有实现双缓冲机制，SurfaceView在底层机制中实现双缓冲机制。  
 
 
 * LayoutInflate 的流程
