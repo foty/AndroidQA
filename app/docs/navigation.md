@@ -28,7 +28,7 @@
 
 #### frameWork与编译
 * 启动流程 [](framework/启动流程.md)
-* zygote、AMS、PMS、WMS (√)
+* zygote、AMS、PMS、WMS [](framework/启动流程.md)
   
 * 签名机制
 * apk打包流程(AAPT Android Asset Packaging Tool android资源打包工具) 
@@ -43,7 +43,7 @@
 ...
 
 #### 框架原理
-* RecyclerView(缓存机制、滑动回收)
+* RecyclerView(缓存机制、滑动回收)[](android/recyclerview.md)
 * OkHttp
 * Glide
 * LruCache原理
