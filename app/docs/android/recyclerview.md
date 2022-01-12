@@ -17,7 +17,7 @@
 3、缓存策略：  
 首先在Scrap -> Cache -> ViewCacheExtension -> RecycledViewPool -> createViewHolder()
 
-4、展现原理
+4、展现原理 <https://blog.csdn.net/Panxuqing/article/details/104308834>
 recyclerview是一个view，先看构造方法。继承ViewGroup，ViewGroup又是继承View，那么必然少不了它的几个重要方法，measure，layout，draw等等。
 recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter，设置数据后适配器notify即可。这里按照这么几个阶段分析：
 
@@ -28,23 +28,25 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 * item动画监听器
 * 初始化适配管理器(AdapterHelper)
 * 初始化子view帮助类
-* 读取xml配置的属性信息，具体有什么属性看能是设置什么属性就知道了。
+* 读取xml配置的属性信息，具体有什么属性看能设置什么属性就知道了。
 * 创建LayoutManager
 
 setLayoutManager阶段：
 * LayoutManager的校验：比如是否同一个，是否为null等等。
 * 绑定RecyclerView，attach到Window(dispatchAttachedToWindow())
-* 更新Recycler缓存大小以及requestLayout()。(等会专门看下这个Recycler是什么东西)
+* 更新Recycler缓存大小以及requestLayout()。(等会专门看这个Recycler是什么东西)
+
+setAdapter阶段：
+* 解冻。解冻之后，recyclerview才能重新layout与滚动
+* 设置新的适配器(替换当前适配器),并且触发监听器。
+* requestLayout()
 
 测量阶段
+* 主要交给Recyclerview.LayoutManager来测量。
 
 摆放阶段
 
 绘制阶段
-
-setAdapter阶段：
-* 解冻。解冻之后，recyclerview才能重新layout与滚动
-* 
 
 
 5、缓存原理
