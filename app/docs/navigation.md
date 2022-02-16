@@ -16,14 +16,16 @@
 #### java知识
 * 各版本特性
 * java语法结构
-* 内存模型
+* 集合
 * 反射
-* GC
-* JVM
-* 类加载过程
+* 多线程  
 * 锁、并发 [](java/并发(锁).md)
 * 泛型
 * 加密
+* JVM
+* GC
+* 内存模型
+* 类加载过程
 ...
 
 #### frameWork与编译
@@ -43,11 +45,11 @@
 ...
 
 #### 框架原理
-* RecyclerView(缓存机制、滑动回收)[](android/recyclerview.md)
+* RecyclerView(缓存机制、滑动回收)[](third_frame/recyclerview.md)
 * OkHttp
+* Retrofit
 * Glide
 * LruCache原理
-* Retrofit
 * liveData (粘性事件导致数据倒灌---先setValue，再observer,还能收到事件)
 * ARouter
 * RxJava 原理、操作符、背压
@@ -62,7 +64,7 @@
 ... 
 
 #### 数据结构算法
-* 基本数据结构(数组，集合，Map，链表，树，堆，图)
+* 基本数据结构(数组，集合，哈希表，链表，树，堆，图)
 * 设计模式
 * 算法
 
