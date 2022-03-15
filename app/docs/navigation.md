@@ -35,6 +35,7 @@
 * 签名机制
 * apk打包流程(AAPT Android Asset Packaging Tool android资源打包工具) 
 * 依赖注入(DI)
+* Hilt (di框架)
 
 * 编译注解、APT(Annotation Processing Tool,即注解处理器) [](base_build/构建技术.md)
 * ASM插桩，Hook，字节码
@@ -42,6 +43,7 @@
 * 进程、线程(一个应用启动有几个进程)
 * 插件化
 * 全埋点技术
+
 ...
 
 #### 框架原理
