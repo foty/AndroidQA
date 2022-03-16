@@ -1,5 +1,6 @@
 package com.example.androidqa;
 
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -15,7 +16,9 @@ class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyViewHolder> {
     @NonNull
     @Override
     public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return null;
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_view,parent,false);
+        MyViewHolder holder = new MyViewHolder(view);
+        return holder;
     }
 
     @Override
@@ -25,7 +28,7 @@ class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyViewHolder> {
 
     @Override
     public int getItemCount() {
-        return 0;
+        return 5;
     }
 }
 

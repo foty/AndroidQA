@@ -5,7 +5,7 @@
 * 事件分发(单独分离)
 * 常见问题
 
- 
+
 ##### 1、(加载)Window、PhoneWindow、DecorView
 在跟踪ActivityThread启动activity最后阶段的时候就有提到过window，就是在ActivityThread#performLaunchActivity()，看到这段代码：
 ```html
@@ -2115,6 +2115,12 @@ private void performTraversals() {
  // draw阶段(performDraw()->draw()->drawSoftware()->mView.draw())
  
 }
+
+一个Activity的View的绘制开始于setContentView()(PhoneWindow，DecorView在这之前已经创建完成)。DecorView将setContent的View添加成为自己的
+一个子View。在这个阶段前，ViewRootImpl产生，DecorView将添加view这件事交给ViewRootImpl完成。接着便出现ViewRootImpl#requestLayout()、
+ViewRootImpl#performTraversals()一系列方法的调用，从而产生三大绘制流程的出现。整个绘制过程从上到下，从ViewGroup到view(顶层view一定是ViewGroup)，
+每个ViewGroup遍历自己的子view，完成一系列的绘制。
+
 
 ##### 2.1、测量模式
 测量模式是 MeasureSpec中的一部分。MeasureSpec是一个类，表示的是一个32位的整形值，它的前2位表示测量模式SpecMode，后30位表示某种测量模式下的规格

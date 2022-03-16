@@ -27,14 +27,14 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 * 读取默认配置信息，包括水平或垂直滚动因子，滑动速度等等
 * item动画监听器
 * 初始化适配管理器(AdapterHelper)
-* 初始化子view帮助类
+* 初始化子view帮助类(ChildHelper)
 * 读取xml配置的属性信息，具体有什么属性看能设置什么属性就知道了。
 * 创建LayoutManager(createLayoutManager(...))、此方法需要在xml中指定LayoutManager才会执行
 
 2、setLayoutManager阶段：
 * LayoutManager的校验：比如是否同一个，是否为null等等。
 * 绑定RecyclerView，attach到Window(dispatchAttachedToWindow())
-* 更新Recycler缓存大小以及requestLayout()。(等会专门看这个Recycler是什么东西)
+* 更新Recycler缓存大小以及requestLayout()。(这里requestLayout()并不会触发3大绘制流程)
 
 3、setAdapter阶段：
 * 解冻。解冻之后，recyclerview才能重新layout与滚动

@@ -3,6 +3,8 @@ package com.example.androidqa;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
@@ -41,6 +43,11 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         //testHandler(handler);
+
+        RecyclerView recycler = findViewById(R.id.recyclerView);
+        recycler.setLayoutManager(new LinearLayoutManager(this));
+        MyRecyclerViewAdapter adapter = new MyRecyclerViewAdapter();
+        recycler.setAdapter(adapter);
 
         TextView view = findViewById(R.id.tvHello);
         view.setOnClickListener(new View.OnClickListener() {
