@@ -1,5 +1,9 @@
 package com.example.androidqa;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 
@@ -8,7 +12,7 @@ import java.util.List;
  * Date : 2022/2/18 11:15
  * Use by
  */
-class Test extends TestSuper {
+class Test extends TestSuper implements Parcelable {
     private String name;
     private int age;
     public String sex;
@@ -42,5 +46,15 @@ class Test extends TestSuper {
 
     public void m3(){
         System.out.println("m m m3");
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+
     }
 }

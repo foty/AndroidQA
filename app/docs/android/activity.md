@@ -108,7 +108,7 @@ startActivity(intent)
 > 任务栈也就是task，保存启动的activity实例。是一个栈结构，栈顶的activity实例就是显示在屏幕页面。
 
 * activity的启动模式和使用场景?
-> 看上面的[三、启动模式(!)](#ss)
+> 看上面的[三、启动模式(!)]
  
 * 有哪些Activity常用的标记位Flags?
 > FLAG_ ACTIVITY_NEW_TASK: 指定Activity启动模式为"singleTask"

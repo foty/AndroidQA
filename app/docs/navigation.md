@@ -6,8 +6,8 @@
 * 事件分发(滑动冲突处理) [](android/事件分发.md)
 * 动画 [](android/动画.md)
 * 图片
-* 性能优化  
-* 序列化(Serializable与Parcelable)
+* 性能优化 
+* 序列化(Serializable与Parcelable) [](android/序列化.md)
 * webView优化
 * JNI
 * kotlin
