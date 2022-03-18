@@ -404,11 +404,11 @@ WindowManagerImpl中的add逻辑又是交给WindowManagerGlobal处理。看到Wi
          // 省略代码。。。
             root = new ViewRootImpl(view.getContext(), display);
             view.setLayoutParams(wparams);
-            mViews.add(view);
-            mRoots.add(root);
+            mViews.add(view); // mViews = view的list
+            mRoots.add(root); // mRoots = ViewRootImpl的list
             mParams.add(wparams);
             try {
-                root.setView(view, wparams, panelParentView, userId);
+                root.setView(view, wparams, panelParentView, userId); // view是DecorView。
             } catch (RuntimeException e) {
                 if (index >= 0) {
                     removeViewLocked(index, true);
@@ -684,7 +684,7 @@ measureHierarchy()方法更像是做了一个窗口大小优化工作，来保�
         }
         Trace.traceBegin(Trace.TRACE_TAG_VIEW, "measure");
         try {
-            mView.measure(childWidthMeasureSpec, childHeightMeasureSpec);  // 注意了，这个mVeiw实际是DecorView。
+            mView.measure(childWidthMeasureSpec, childHeightMeasureSpec);  // 注意了，这个mView实际是DecorView。
         } finally {
             Trace.traceEnd(Trace.TRACE_TAG_VIEW);
         }
@@ -762,7 +762,7 @@ public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
 View的都知道，这是重要一环。把测量这一步骤交给开发者自己去决定。  
 下面回到ViewRootImpl#measureHierarchy()方法，也就是接着执行完`performMeasure()`之后，再次判断测量结果是否是最后，最后返回表示窗口是否发生变化的
 boolean结果。performMeasure()方法结束，流程重新回到performTraversals()中，接着 measureHierarchy()往下：
-```
+```text
        // ...衔接 measureHierarchy()
        if (collectViewAttributes()) { // 保存View的属性
             params = lp;
@@ -1183,7 +1183,7 @@ boolean结果。performMeasure()方法结束，流程重新回到performTraversa
 
 第二部分(从方法最开始到measureHierarchy()归为第一部分：主要内容就是测量)主要是对第一部分测量结果确认校准，利用底层创建surface，准备绘制线程，执行layout
 等操作。要看具体的布局流程，到performLayout()方法:
-```
+```text
     private void performLayout(WindowManager.LayoutParams lp, int desiredWindowWidth,int desiredWindowHeight) {
         mScrollMayChange = true;
         mInLayout = true;
@@ -1242,7 +1242,7 @@ boolean结果。performMeasure()方法结束，流程重新回到performTraversa
     }
 ```
 View#layout()方法如下:
-```
+```text
  public void layout(int l, int t, int r, int b) {
         if ((mPrivateFlags3 & PFLAG3_MEASURE_NEEDED_BEFORE_LAYOUT) != 0) { //先判断是否测量完毕，否则会先去执行测量
             onMeasure(mOldWidthMeasureSpec, mOldHeightMeasureSpec);
@@ -1307,7 +1307,7 @@ View#layout()方法如下:
 ```
 View#layout()做了2个事，1是将回调onLayout()给DecorView,onLayoutChange()；2是处理焦点问题。    
 看到DecorView的onLayout()方法
-```
+```text
 protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
         if (mApplyFloatingVerticalInsets) { //若有垂直方向的偏移
@@ -1327,7 +1327,7 @@ protected void onLayout(boolean changed, int left, int top, int right, int botto
     }
 ```
 DecorView的有super.onLayout(),会先执行父类的OnLayout(),看到FrameLayout的onLayout()。在FrameLayout#onLayout()会间接调用下面这个方法：
-```
+```text
 void layoutChildren(int left, int top, int right, int bottom, boolean forceLeftGravity) {
         final int count = getChildCount(); // 获取子View的数量。
         // 计算padding值
@@ -1393,7 +1393,7 @@ FrameLayout的onLayout()就结束后，回到DecorView的onLayout()方法，设�
 执行完onLayout()的逻辑，接着看是否有布局请求需要处理，有的话需要测量，布局等一套完整流程。    
 
 ViewRootImpl#performLayout()方法结束，流程又回到performTraversals(),前面分了2个部分，第一部分是测量，第二部分是校准以及布局，现在看第三部分：
-```
+```text
        if (surfaceDestroyed) {
           notifySurfaceDestroyed();
        }
@@ -1525,7 +1525,7 @@ ViewRootImpl#performLayout()方法结束，流程又回到performTraversals(),�
 ```
 performTraversals()方法的最后一部分主要是onDraw()，同时draw之前还夹杂了焦点的处理。看到performDraw()方法：   
 ViewRootImpl#performDraw():
-```
+```text
     private void performDraw() { // 当前绘制完毕并且不需要下一次绘制，或者view等于null，就返回。不再处理draw。
         if (mAttachInfo.mDisplayState == Display.STATE_OFF && !mReportNextDraw) {
             return;
@@ -1638,7 +1638,7 @@ ViewRootImpl#performDraw():
     }
 ```
 看到ViewRootImpl#draw()方法:
-```
+```text
     private boolean draw(boolean fullRedrawNeeded) {
         Surface surface = mSurface;
         if (!surface.isValid()) {
@@ -1799,7 +1799,7 @@ ViewRootImpl#performDraw():
     }
 ```
 ViewRootImpl#drawSoftware()方法:
-```
+```text
 private boolean drawSoftware(Surface surface, AttachInfo attachInfo, int xoff, int yoff,
             boolean scalingRequired, Rect dirty, Rect surfaceInsets) {
 
@@ -1865,7 +1865,7 @@ private boolean drawSoftware(Surface surface, AttachInfo attachInfo, int xoff, i
 ```
 上面方法主要看`mView.draw(canvas);`，其他都是一些准备工作什么的。还是要强调一下，这里的mView是指DecorView的实例，在DecorView的draw(canvas)方法有
 super的调用，而DecorView的直接父类FrameLayout是没有这个方法，ViewGroup中也是没有这个方法，而是在View中有这个方法，所以要看到View的中的这个方法：
-```
+```text
 // DecorView中的简单draw()方法
     public void draw(Canvas canvas) {
         super.draw(canvas);
@@ -1876,7 +1876,7 @@ super的调用，而DecorView的直接父类FrameLayout是没有这个方法，V
     }
 ```
 View中的draw()方法:
-```
+```html
     public void draw(Canvas canvas) {
         final int privateFlags = mPrivateFlags;
         mPrivateFlags = (privateFlags & ~PFLAG_DIRTY_MASK) | PFLAG_DRAWN; // 先处理标志位，表示在绘制这个view了。
@@ -2118,8 +2118,8 @@ private void performTraversals() {
 
 一个Activity的View的绘制开始于setContentView()(PhoneWindow，DecorView在这之前已经创建完成)。DecorView将setContent的View添加成为自己的
 一个子View。在这个阶段前，ViewRootImpl产生，DecorView将添加view这件事交给ViewRootImpl完成。接着便出现ViewRootImpl#requestLayout()、
-ViewRootImpl#performTraversals()一系列方法的调用，从而产生三大绘制流程的出现。整个绘制过程从上到下，从ViewGroup到view(顶层view一定是ViewGroup)，
-每个ViewGroup遍历自己的子view，完成一系列的绘制。
+ViewRootImpl#performTraversals()一系列方法的调用，从而产生三大绘制流程的出现。绘制过程从DecorView自身开始，递归到最后一个子view进行测量、布
+局、绘制(DecorView是一个 FrameLayout)，从上到下， 从ViewGroup到view(顶层view一定是ViewGroup)，完成一系列的绘制。
 
 
 ##### 2.1、测量模式
