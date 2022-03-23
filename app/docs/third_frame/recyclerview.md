@@ -1,27 +1,15 @@
 #### RecyclerView
 
+* RecyclerView展现流程
 * RecyclerView缓存
 * 相关问题
 
-##### 一、RecyclerView缓存
-1、缓存，存的是什么。  
-> 存的是ViewHolder。这块可以对比ListView优化的写法。就是自己写一个ViewHolder类。RecyclerView的ViewHolder其实是同样的道理。
-
-2、四个级别缓存:
-
-* Scrap: 屏幕内的缓存view，可以直接使用，
-* Cache: 刚刚移出屏幕的view，也是可以直接使用的，一般有一个固定的容量，默认是2(上下各1个)。
-* ViewCacheExtension: 用于自定义缓存的东西
-* RecycledViewPool: 存放当Cache容量满了之后，根据规则将Cache先缓存的view移出Cache的view。存放的来自Cache的缓存view。
-
-3、缓存策略：  
-首先在Scrap -> Cache -> ViewCacheExtension -> RecycledViewPool -> createViewHolder()
-
-4、展现原理 <https://blog.csdn.net/Panxuqing/article/details/104308834>
+##### 一、RecyclerView绘制
+<https://blog.csdn.net/Panxuqing/article/details/104308834>
 <https://blog.csdn.net/m0_37796683/article/details/104864318>
+
 recyclerview是一个view，先看构造方法。继承ViewGroup，ViewGroup又是继承View，那么必然少不了它的几个重要方法，measure，layout，draw等等。
 recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter，设置数据后适配器notify即可。这里按照这么几个阶段分析：
-
 
 1、构造阶段(创建实例)：  
 * 设置ScrollContainer(true),控制能否滚动
@@ -46,7 +34,6 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 * 更新适配器,设置数据监听器(RecyclerViewDataObserver)。
 * LayoutManager回收废弃的view，清空Recycler以保证正确的回调
 * requestLayout()
-
 > setAdapter()之后再次requestLayout()，这次会触发三大绘制流程，开始绘制View。
 
 
@@ -66,12 +53,26 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 - 遍历子view创建ViewHolder并保存到`SimpleArrayMap<RecyclerView.ViewHolder, InfoRecord>`
 - 更新mState状态
 
-
 关键方法2：dispatchLayoutStep2():
-- layout子view，具体交给LayoutManager`mLayout.onLayoutChildren(mRecycler, mState)`，关键方法是`fill()`,`layoutChunk()`,`addView()`
-  最终还是调用ViewGroup的`addView()`。添加完成后调用`measureChildWithMargins()`测量子view(包括margin值)得到子view的一个位置坐标，通过坐标
-  将子view layout(`layoutDecoratedWithMargins()`)
+- layout子view，具体交给LayoutManager`mLayout.onLayoutChildren(mRecycler, mState)`，关键类在LayoutManager，关键方法是`fill()`,
+  `layoutChunk()`,`addView()`最终还是调用ViewGroup的`addView()`。添加完成后调用`measureChildWithMargins()`测量子view(包括margin值)
+  得到子view的一个位置坐标，通过坐标 将子view layout(`layoutDecoratedWithMargins()`)
 - 更新mState状态(State.STEP_ANIMATIONS)
+
+关键方法3：LinearLayoutManager#onLayoutChildren()：
+- 获取锚点位置坐标，确定item布局的起始位置。
+- 根据方向确定从底部开始或者从顶部开始布局
+- 填充item
+
+关键方法4：fill()：
+- 如果有需要，回收开始滚动后滑出屏幕的那些itemView
+- 循环调用`layoutChunk()`,填充item。直到屏幕无法容下更多item或者没有更多的item
+- 返回当次填充item消耗的空间
+
+关键方法5：layoutChunk()：
+- 获取到itemView，最后添加到recyclerview中。获取方法是`layoutState.next(recycler)`，item的缓存复用机制也是由这里开始
+- 测量ItemView以及它的子view边距情况(measureChildWithMargins())
+- 根据上面测量的边距，重新摆放itemView
 
 
 5、摆放阶段 onLayout()
@@ -80,30 +81,49 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
   改变，也会重新执行dispatchLayoutStep2()。最后执行dispatchLayoutStep3()。
   
 
-dispatchLayoutStep3(): (保存有关动画视图的信息，触发动画并进行任何必要的清理)
+关键方法3：dispatchLayoutStep3(): (保存有关动画视图的信息，触发动画并进行任何必要的清理)
 - 更新mState状态(State.STEP_START)
 - 如果运行动画，将遍历子view保存view的动画信息(保存到ViewInfoStore)，与step1类似。最后处理动画回调。
 - 完成Layout阶段，重置状态设置
 
 
 绘制阶段 onDraw()
-- recyclerview的onDraw是绘制ItemDecoration，item则是交给它的父类(super.onDraw(c))完成，也就是ViewGroup。
+- recyclerview的onDraw是绘制ItemDecoration，item则是交给ViewGroup(super.onDraw(c))完成。
 
 
-6、特别类1：LayoutManager
-最经常用的LayoutManager是LinearLayoutManager。就以它作为分析对象。在绘制过程中LayoutManger涉及到有测量与layout。关注`mLayout.onMeasure(...)`与
-``mLayout.onLayoutChildren(...)``2个方法。   
-- LayoutManager.onMeasure()。LinearLayoutManager中并没有重写这个方法，在LayoutManager自己有实现，就是调用RV的defaultOnMeasure()方法
-
-- LayoutManager.onLayoutChildren()。
-
-7、特别类2：Recycler。
+>概述：
+> RecyclerView  一个大容器(ViewGroup)，负责onDraw。
+> LayoutManager 负责测量，添加，摆放itemView
+>
 
 
-5、缓存原理
+##### 二、RecyclerView缓存
+1、缓存，存的是什么。
+> 存的是ViewHolder。这块可以对比ListView优化的写法。就是自己写一个ViewHolder类。RecyclerView的ViewHolder其实是同样的道理。
 
-##### 二、 相关问题
+2、四个级别缓存:
+* Scrap: 屏幕内的缓存view，可以直接使用，
+* Cache: 刚刚移出屏幕的view，也是可以直接使用的，一般有一个固定的容量，默认是2(上下各1个)。
+* ViewCacheExtension: 用于自定义缓存的东西
+* RecycledViewPool: 存放当Cache容量满了之后，根据规则将Cache先缓存的view移出Cache的view。存放的来自Cache的缓存view。
 
+3、缓存策略：  
+首先在Scrap -> Cache -> ViewCacheExtension -> RecycledViewPool -> createViewHolder()
+
+4、缓存机制：
+<https://blog.csdn.net/m0_37796683/article/details/105141373>
+> 从LayoutManager#layoutChunk()的layoutState.next()开始，RecyclerView.Recycler隆重登场。
+
+关键方法next()：
+- 首先判断缓存列表是否存在，有的话从缓存获取`nextViewFromScrapList()`
+- 否则根据position从Recycler中获取。`getViewForPosition()`
+
+
+关键方法：tryGetViewHolderForPositionByDeadline()
+- position合法性校验
+- 如果是预布局的，
+
+##### 三、 相关问题
 * RecyclerView的多级缓存机制,每一级缓存具体作用是什么,分别在什么场景下会用到哪些缓存
 * RecyclerView的滑动回收复用机制
 * RecyclerView的刷新回收复用机制
