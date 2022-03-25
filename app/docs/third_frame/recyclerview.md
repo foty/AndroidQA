@@ -48,9 +48,10 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 
 
 关键方法1：dispatchLayoutStep1():
-- 处理adapter更新 
-- 处理动画
-- 遍历子view创建ViewHolder并保存到`SimpleArrayMap<RecyclerView.ViewHolder, InfoRecord>`
+- 处理adapter更新
+- 找到没有被移除的item保存起来(遍历子view创建ViewHolder并保存到`SimpleArrayMap<RecyclerView.ViewHolder, InfoRecord>`) 
+- 进行预布局(第一次`mLayout.onLayoutChildren()`) 
+- 处理动画，根据第一次保存信息与预布局对比结果，添加add动画或者remove动画
 - 更新mState状态
 
 关键方法2：dispatchLayoutStep2():
@@ -62,7 +63,8 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 关键方法3：LinearLayoutManager#onLayoutChildren()：
 - 获取锚点位置坐标，确定item布局的起始位置。
 - 根据方向确定从底部开始或者从顶部开始布局
-- 填充item
+- 填充item(fill())
+- 修复屏幕空白
 
 关键方法4：fill()：
 - 如果有需要，回收开始滚动后滑出屏幕的那些itemView
@@ -83,7 +85,8 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 
 关键方法3：dispatchLayoutStep3(): (保存有关动画视图的信息，触发动画并进行任何必要的清理)
 - 更新mState状态(State.STEP_START)
-- 如果运行动画，将遍历子view保存view的动画信息(保存到ViewInfoStore)，与step1类似。最后处理动画回调。
+- 将遍历子view保存view的动画信息(保存到ViewInfoStore)，与step1类似。 
+- 处理动画回调(执行动画)。
 - 完成Layout阶段，重置状态设置
 
 
@@ -94,7 +97,7 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 >概述：
 > RecyclerView  一个大容器(ViewGroup)，负责onDraw。
 > LayoutManager 负责测量，添加，摆放itemView
->
+> Recycler 负责holder的回收复用
 
 
 ##### 二、RecyclerView缓存
@@ -102,7 +105,8 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 > 存的是ViewHolder。这块可以对比ListView优化的写法。就是自己写一个ViewHolder类。RecyclerView的ViewHolder其实是同样的道理。
 
 2、四个级别缓存:
-* Scrap: 屏幕内的缓存view，可以直接使用，
+* Scrap: 屏幕内的临时缓存的holder，保存进行布局时分离出来的，未移除的，不参与滚动回收的viewHolder，可以直接使用，分2类：AttachedScrap与ChangedScrap。
+  ChangedScrap与AttachedScrap的区别是holder是否发生了改变。
 * Cache: 刚刚移出屏幕的view，也是可以直接使用的，一般有一个固定的容量，默认是2(上下各1个)。
 * ViewCacheExtension: 用于自定义缓存的东西
 * RecycledViewPool: 存放当Cache容量满了之后，根据规则将Cache先缓存的view移出Cache的view。存放的来自Cache的缓存view。
@@ -112,21 +116,33 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 
 4、缓存机制：
 <https://blog.csdn.net/m0_37796683/article/details/105141373>
+<https://blog.csdn.net/zhying719/article/details/114826527>布局流程
 > 从LayoutManager#layoutChunk()的layoutState.next()开始，RecyclerView.Recycler隆重登场。
 
 关键方法next()：
 - 首先判断缓存列表是否存在，有的话从缓存获取`nextViewFromScrapList()`
 - 否则根据position从Recycler中获取。`getViewForPosition()`
 
+> getViewForPosition()最终回来到tryGetViewHolderForPositionByDeadline()，这里才是复用机制的真正体现。
 
 关键方法：tryGetViewHolderForPositionByDeadline()
 - position合法性校验
-- 如果是预布局的，
+- 如果是预布局的，通过position和id俩种方式从ChangedScrap中获取指定holder。(`getChangedScrapViewForPosition()`)
+- 从AttachedScrap中精准匹配寻找指定holder；或者从ChildHelper寻找具有与位置匹配的有效的、隐藏的view。通过view获取holder，然后取消隐
+  藏，分离出这个holder，添加到scrap区域，最后返回这个holder；再者从Cache中获取holder。
+- 判断adapter.hasStableIds()，如果true，则通过id再次从AttachedScrap与Cache中获取holder()。
+- 从ViewCacheExtension中获取holder。这是预留给开发者的缓存，开发者可以通过这个实现自己的缓存逻辑。使用很少。
+- 从RecycledViewPool中获取holder。pool默认最大的容量是5。
+- 如果还是没有找到指定的holder，主动创建一个holder，`adapter#createViewHolder()`。
+- 绑定ViewHolder` mAdapter.bindViewHolder()`
+
 
 ##### 三、 相关问题
 * RecyclerView的多级缓存机制,每一级缓存具体作用是什么,分别在什么场景下会用到哪些缓存
 * RecyclerView的滑动回收复用机制
-* RecyclerView的刷新回收复用机制
+
 * RecyclerView 为什么要预布局
+> 为添加，移除item做动画铺垫。
+
 * ListView 与 RecyclerView区别
 * RecyclerView性能优化
