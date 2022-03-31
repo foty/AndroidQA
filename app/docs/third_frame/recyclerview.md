@@ -62,7 +62,8 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 
 关键方法3：LinearLayoutManager#onLayoutChildren()：
 - 获取锚点位置坐标，确定item布局的起始位置。
-- 根据方向确定从底部开始或者从顶部开始布局
+- 根据方向确定从底部开始或者从顶部开始布局 
+- 分离所有的item存放至scrap区域(每次布局都是要先分离所有的子view)
 - 填充item(fill())
 - 修复屏幕空白
 
@@ -112,7 +113,7 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 * RecycledViewPool: 存放当Cache容量满了之后，根据规则将Cache先缓存的view移出Cache的view。存放的来自Cache的缓存view。
 
 3、缓存策略：  
-首先在Scrap -> Cache -> ViewCacheExtension -> RecycledViewPool -> createViewHolder()
+首先在Scrap -> CachedView -> ViewCacheExtension -> RecycledViewPool -> createViewHolder()
 
 4、缓存机制：
 <https://blog.csdn.net/m0_37796683/article/details/105141373>
@@ -138,7 +139,12 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 
 
 ##### 三、 相关问题
-* RecyclerView的多级缓存机制,每一级缓存具体作用是什么,分别在什么场景下会用到哪些缓存
+* RecyclerView的多级缓存机制,每一级缓存具体作用是什么,分别在什么场景下会用到哪些缓存。
+> Scrap：又分changeScrap与attachScrap，临时存放重新布局时分离出来的viewHolder，可以直接使用。不参与滚动缓存。
+> CachedView：滚动时，移除屏幕的item会被保存在这。
+> ViewCacheExtension：预留给开发者实现的缓存，几乎不怎么使用
+> RecycledViewPool：CachedView容量不够时，将会把itemView放到pool
+
 * RecyclerView的滑动回收复用机制
 
 * RecyclerView 为什么要预布局
