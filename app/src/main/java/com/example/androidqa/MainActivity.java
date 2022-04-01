@@ -20,7 +20,10 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
 import android.view.animation.LinearInterpolator;
+import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.bumptech.glide.Glide;
 
 import java.lang.reflect.Method;
 
@@ -49,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
         MyRecyclerViewAdapter adapter = new MyRecyclerViewAdapter();
         recycler.setAdapter(adapter);
 
+        ImageView imageView = findViewById(R.id.imageView);
         TextView view = findViewById(R.id.tvHello);
         view.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -56,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(MainActivity.this, MainBActivity.class));
             }
         });
+
+        Glide.with(this).load("").into(imageView);
 
         // 递归父布局
 //        View child = view;
