@@ -427,7 +427,9 @@ public void setView(View view, WindowManager.LayoutParams attrs, View panelParen
                 //省略代码。。。。
                 
                 requestLayout(); // 关注这一句即可。
-                InputChannel inputChannel = null;
+                // InputChannel是Window与InputManagerService之间的通信桥梁，用来管理输入事件(事件分发)。手机硬件模块产生的屏幕事件通过
+                // InputManagerService接收，service通过InputChannel将事件传递到window(activity)。
+                InputChannel inputChannel = null; 
                 // 。。。省略代码
             }
             //。。。
