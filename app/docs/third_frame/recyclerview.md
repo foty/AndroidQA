@@ -156,3 +156,4 @@ recyclerview的使用步骤：创建实例，设置LayoutManager，设置adapter
 > 1、全局刷新数据可以使用notifyDataSetChanged，但是局部数据刷新时，不使用notifyDataSetChanged，甚至重写DiffUtil。
 > 2、自定义缓存
 > 3、预加载
+> 4、如果 Item 高度是固定的话，可以使用 RecyclerView.setHasFixedSize(true); 来避免 requestLayout 浪费资源。
