@@ -61,7 +61,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Glide.with(this).load("").into(imageView);
+        Glide.with(this)
+                .load("")
+                .skipMemoryCache(true)
+                .into(imageView);
 
         // 递归父布局
 //        View child = view;
