@@ -41,14 +41,13 @@ return new Glide(
 
 3、Glide的`load()`方法：
 
-* 创建RequestBuilder实例，并且指定资源类型为`Drawable`。
+* 创建RequestBuilder实例，并且指定资源类型为`Drawable.class`。
 * 将glide实例，请求url，RequestManager等核心对象关联绑定。
 
 
 4、Glide的`into()`方法：
-
 > 处理ImageView设置的ScaleType。(`RequestBuilder#into(View view)`)
-> 将imageView 包装成ViewTarget。(`RequestBuilder#buildImageViewTarget()`)
+> 将imageView包装成DrawableImageViewTarget。(`RequestBuilder#buildImageViewTarget()`)
 > 构建一个新的Request。(`RequestBuilder#buildRequest()`)
 > 从target中get获取一个request，并与新的request对比。如果是同一个请并且没有缓存并且是完成状态，则使用前一个request再次请求。否则使用新request请求。
 
@@ -101,10 +100,12 @@ return SingleRequest.obtain(
 * 从内存中取出对应的资源(`loadFromMemory()`)，如果资源存在，通过SingleRequest#onResourceReady()回调出去，设置图片，请求结束。
 * 调用`waitForExistingOrStartNewJob()`请求图片。
 
-5、waitForExistingOrStartNewJob()
-* 如果请求过该资源，从缓存Job中获取到已经构建好的EngineJob，最终会从内存中返回资源。(EngineJob对应的是EngineKey)。
-* 如果没有请求过该资源，将构建新的EngineJob、DecodeJob，然后EngineJob启动DecodeJob。DecodeJob是一个runnable，被启动后直接看它
-  的run方法。而它run方法调用了一个runWrapped。
+5、Engine#waitForExistingOrStartNewJob()
+* 如果请求过该资源，从缓存Job中获取到已经构建好的EngineJob(EngineJob对应的是EngineKey)。通过`addCallback()`将回调设置到EngineJob内
+  部，从而添加到`cbs`中。因为请求过的原因如果成功，`hasResource`值为true，开启线程执行CallResourceReady。最终会从内存中获取到资源通
+  过回调回到SingleRequest#onResourceReady()。
+* 如果没有请求过该资源，将构建新的EngineJob、DecodeJob。同样的通过`addCallback()`添加到EngineJob的`cbs`以便后续使用，然后EngineJob启
+  动DecodeJob。DecodeJob是一个runnable，被启动后直接看它的run方法。而它run方法调用了一个runWrapped()方法。
 
 6、DecodeJob#runWrapped() DecodeJob#run()
 ```text
@@ -223,7 +224,7 @@ ResourceCacheGenerator的实例，来执行到它的startNext()方法。因为�
 * 其他2个判断loadData.fetcher.getDataSource()与loadData.fetcher.getDataClass()
 
   
-8、helper.getLoadData()  
+8、SourceGenerator#startNext()##helper.getLoadData()  
 > 这个getLoadData还是有必要单独抽出来提下，<https://blog.csdn.net/FooTyzZ/article/details/89642968>这部分也有提到。相差不是很明显。从
 >  getLoadData()#glideContext.getRegistry().getModelLoaders(model)处开始
 
@@ -399,21 +400,56 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
 * 初始化modelLoaders`helper.getModelLoaders(cacheFile)` (二阶段)
 * 初始化loadData (三阶段)
 * 执行loadData.fetcher.loadData()
+* return true，SourceGenerator#startNext()return true。
 
 这里与`SourceGenerator#startNext()`的那三个阶段是一样的，具体参照*第8.的二阶段与三阶段*。注意的是SourceGenerator中的`model`是String.class，这
 里的`model`是File.class。接着就是到Glide类中寻找，根据具体的条件过滤。这里得到的`modelLoaders`是`ByteBufferFileLoader`,`loadData`是`LoadData`
 实例，`loadData.fetcher`是`ByteBufferFetcher`。
 
-14、ByteBufferFetcher#loadData
+14、*ByteBufferFetcher#loadData*
 * 读取文件资源
-* callback
-> 这里callback回到 DataCacheGenerator#onDataReady()，然后再一个`cb.onDataFetcherReady()`回到`SourceGenerator#onDataFetcherReady()`。
+* 携带数据callback
+> 这里callback回到 DataCacheGenerator#onDataReady()，然后再一个`cb.onDataFetcherReady()`回到`SourceGenerator#onDataFetcherReady()`。在
+> onDataFetcherReady()方法回到DecodeJob#onDataFetcherReady()。
+
+15、*DecodeJob#onDataFetcherReady()*
+* 判断当前线程是否是最初的那条线程。如果不是，赋值runReason`RunReason.DECODE_DATA`，借助`callback.reschedule(this)`一直返回到那条线程。这样即是
+  重新运行的run方法，因为runReason = `RunReason.DECODE_DATA`，也会直接执行decodeFromRetrievedData()方法，不会再去请求资源。
+* 原始资源解码decodeFromRetrievedData()。
+
+16、*DecodeJob#decodeFromRetrievedData*
+* 解码decodeFromData().(在解码时会回调到`onResourceDecoded()`，deferredEncodeManager会被初始化)
+* 重新编码以及释放资源notifyEncodeAndRelease()
+
+17、*DecodeJob#notifyEncodeAndRelease()*
+* 执行notifyComplete()，完成请求，准备设置图片环节。
+* stage赋值Stage.ENCODE，执行DeferredEncodeManager#encode(..)将资源添加到内存缓存(DiskLruCache)
+* 执行onEncodeComplete()，状态初始化。如stage，model，currentGenerator等等
+> notifyComplete()方法就是通过callback回到EngineJob#onResourceReady()方法。在这里初始化一些常量后调用`notifyCallbacksOfResult()`。通过遍历
+> `cbs`的回调，返回到SingleRequest#onResourceReady()准备为View设置图片。(`cbs`怎么来的可以看*第5、*)
+
 
 ##### 3、设置图片阶段
+1、*SingleRequest#onResourceReady(...) 回调接口方法，3个参数*
+* 校验获取的资源合法性
+* 执行onResourceReady()。注意这个方法是SingleRequest的私有方法，前面那个同名方法是ResourceCallback的接口方法。
 
+2、*SingleRequest#onResourceReady()* 类私有方法，4个参数
+* 将当前的status设置为Status.COMPLETE
+* 其他监听器的成功回调(onResourceReady())
+* 为View设置图片(`target.onResourceReady(result, animation)`)
+> 这里的target要追溯到Glide#into()方法(*前面第4、*)，就是在那里创建并且传递过来的。target是`DrawableImageViewTarget`示例。但是onResourceReady()
+> 是父类方法，DrawableImageViewTarget并没重写。它的父类是`ImageViewTarget`。在这里调用`setResourceInternal()`方法，设置图片以及图片。设置图片的方
+> 法`setResource()`是抽象方法，由它的子类DrawableImageViewTarget实现。
 
-
-
+3、*DrawableImageViewTarget#setResource()*
+```
+  protected void setResource(@Nullable Drawable resource) {
+    view.setImageDrawable(resource);
+  }
+```
+> `view`就是Glide.into(view)的那个view。到此，glide加载图片的流程已经全部走完。
+ 
 
 #### 缓存原理
 
