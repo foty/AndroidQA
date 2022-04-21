@@ -229,17 +229,17 @@ AOP是Aspect Oriented Programming，即面向切面编程。OOP 即面向对象�
 AOP实现可分为以下步骤：      
 * 注解模块：声明指定功能的注解。比如一个登录拦截的注解，在需要使用登录拦截功能时，只添加上注解即可实现拦截功能；
 * 辅助类辅助工具类：主要根据功能来设计，常见的设计有接口回调，管理类等等，主要用于沟通切面与主业务功能之间的联系；
-* 切面模块：aop的核心。功能上就是完成需要重复判断编写的逻辑等等。需要有专门的框架知识储备(AspectJ)，具体可以参考
+* 切面模块：aop的核心。功能上就是完成需要重复判断编写的逻辑等等。需要有专门的框架知识储备(如AspectJ)，具体可以参考
   <https://blog.csdn.net/zhengchao1991/article/details/53391244>
 
-4、核心实现  
-APT、AspectJ、ASM
+4、核心实现(三大派系)  
+AspectJ、Asm、Javassist
 
 
 ##### 3、APT(注释处理器)
 APT(Annotation Processing Tool的简称)，可以在代码编译期解析注解，并且生成新的java文件，减少手动的代码输入。现在有很多主流库都用上了APT，
 比如Dagger2,ButterKnife,EventBus3,等等。
-一句话描述就是在编译期间通过注解生成java文件代码。
+一句话描述就是在编译期间通过注解生成java文件代码的技术。
 
 
 ##### 4、AspectJ  
