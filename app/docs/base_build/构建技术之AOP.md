@@ -1,8 +1,7 @@
 #### AOP
 
 ##### 前提概要
-
-个人认为是处于编译构建阶段的操作。整个打包流程就是：编译-->DEX-->打包-->签名和对齐。
+每个项目的最终目的都是打包成可按装使用的apk。整个打包流程就是：编译-->DEX-->打包-->签名和对齐。
 [img](../图片/img_打包流程图.png)
 第一步就是编译阶段，在这个阶段，对于代码来说就 是.java文件 -> .class文件 -> .dex文件的转换过程。更深入可能需要了解一些JVM相关知识。这篇主
 要是了解构建相关的。在android中主要就是gradle了。分以下点来了解。
@@ -189,8 +188,6 @@ implementation-class=LogsPlugin
 前面2种方式都有一个缺点就是只能在自己项目中使用，别的项目无法使用。这对于开发来说无疑是一个很致命的缺陷。第三种方式就是其实就是为了解决这个缺陷。
 它将插件发布到类似Maven，repo等仓库，别的项目通过依赖的方式即可使用。第三种方式其实就是在buildSrc的基础升级，多做一步上传的操作。
 
-
-
 ##### transform。    
 <https://www.jianshu.com/p/cf90c557b866>
 
@@ -211,9 +208,9 @@ transform主要就是学习它API。
 解决一些复杂技术痛点，提高效率
 
 实际应用:
+
 ##### 1、全埋点
 涉及比较广，其实就是全局事件监听，页面停留时间等等一系列的东西，用到的技术无非apt、apo、插桩等等
-
 
 ##### 2、AOP(切面编程，方法论)
 参考资料：<https://www.jianshu.com/p/9fb07b2596f7>
@@ -235,24 +232,14 @@ AOP实现可分为以下步骤：
 4、核心实现(三大派系)  
 AspectJ、Asm、Javassist
 
-
-##### 3、APT(注释处理器)
-APT(Annotation Processing Tool的简称)，可以在代码编译期解析注解，并且生成新的java文件，减少手动的代码输入。现在有很多主流库都用上了APT，
-比如Dagger2,ButterKnife,EventBus3,等等。
-一句话描述就是在编译期间通过注解生成java文件代码的技术。
-
-
-##### 4、AspectJ  
+##### 3、AspectJ  
 代码生成框架,在编译期(.java转换成.class)时生成class文件。通常在AOP实现使用。
 
-
-##### 5、Javassist   
+##### 4、Javassist   
 修改字节码框架，在编译期(.class -> .dex)发挥作用。常用在 Gradle Transform。
 
-
-##### 6、Asm   
+##### 5、Asm   
 同Javassist一样也是字节码修改工具，常用在 Gradle Transform。
 
-
-##### 7、Hook  
+##### 6、Hook  
 

@@ -34,8 +34,8 @@
 * 进程、线程(一个应用启动有几个进程)
 * 编译打包流程 [](base_build/编译打包流程.md)
 * 签名机制
-* APT(Annotation Processing Tool,即注解处理器) [](base_build/构建技术之APT.md)
 * AOP [](base_build/构建技术之AOP.md)
+* APT(Annotation Processing Tool,即注解处理器) [](base_build/构建技术之APT.md)
 * 依赖注入(DI)
 * Hilt (di框架)
 * ASM插桩，Hook，字节码
