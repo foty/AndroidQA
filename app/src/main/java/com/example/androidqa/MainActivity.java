@@ -1,29 +1,21 @@
 package com.example.androidqa;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
-import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.MessageQueue;
-import android.os.PersistableBundle;
-import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewParent;
-import android.view.animation.LinearInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.lang.reflect.Method;
 
@@ -57,14 +49,16 @@ public class MainActivity extends AppCompatActivity {
         view.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, MainBActivity.class));
+//                startActivity(new Intent(MainActivity.this, MainBActivity.class));
+                Log.d("lxx", "开始模拟");
+                testGlideLoad();
             }
         });
 
-        Glide.with(this)
-                .load("")
-                .skipMemoryCache(true)
-                .into(imageView);
+//        Glide.with(this)
+//                .load("")
+//                .skipMemoryCache(true)
+//                .into(imageView);
 
         // 递归父布局
 //        View child = view;
@@ -127,6 +121,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         Log.d("lxx", "A onDestroy");
+    }
+
+    private void testGlideLoad() {
+        MnEngine engine = new MnEngine();
+        MnDeCode deCode = new MnDeCode(engine);
+        engine.start(deCode);
     }
 
     private void testHandler(Handler handler) {

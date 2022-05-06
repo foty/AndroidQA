@@ -7,6 +7,11 @@
 * 其他问题
 
 #### Glide
+优点：
+* 高效的缓存策略。
+* 内存开销小。默认Bitmap格式是RGB_565。
+* 支持 Gif、WebP、缩略图，甚至Video
+* 图片显示效果为渐变，更加平滑
 
 
 #### 加载原理
@@ -119,7 +124,7 @@ return SingleRequest.obtain(
       case SWITCH_TO_SOURCE_SERVICE: // 从磁盘缓存策略切换为服务器资源。即从服务器获取资源。
         runGenerators();
         break;
-      case DECODE_DATA: // 在其他线程(子线程)获取到数据后，重新切回原线程处理资源。可以理解为在子线程拿到了资源，要切回主线程处理。
+      case DECODE_DATA: // 其他线程获取数据后，切回原来线程(存在需要切换多次的情况)。可以理解为在子线程拿到了资源，要切回主线程处理。
         decodeFromRetrievedData();
         break;
       default:
@@ -136,11 +141,11 @@ getNextStage()：
         return diskCacheStrategy.decodeCachedResource()
             ? Stage.RESOURCE_CACHE
             : getNextStage(Stage.RESOURCE_CACHE);
-      case RESOURCE_CACHE:  //从缓存资源中解码获取数据。(指内存缓存)
+      case RESOURCE_CACHE:  //从缓存资源中解码获取数据。(指磁盘缓存的被转换过，解码过的数据)
         return diskCacheStrategy.decodeCachedData()
             ? Stage.DATA_CACHE
             : getNextStage(Stage.DATA_CACHE);
-      case DATA_CACHE:  // 从缓存的源数据中解码获取数据。(指磁盘缓存)
+      case DATA_CACHE:  // 从缓存的源数据中解码获取数据。(指磁盘缓存未被转换过的原始数据)
         // Skip loading from source if the user opted to only retrieve the resource from cache.
         return onlyRetrieveFromCache ? Stage.FINISHED : Stage.SOURCE;
       case SOURCE: // 从获取的源数据解码获取数据。(指从服务器获取到的源数据)
@@ -155,11 +160,11 @@ getNextGenerator():
 ```text
 private DataFetcherGenerator getNextGenerator() {
     switch (stage) {
-      case RESOURCE_CACHE: // 内存缓存 -> 
+      case RESOURCE_CACHE: // 转换过的数据缓存 -> 
         return new ResourceCacheGenerator(decodeHelper, this);
-      case DATA_CACHE: // 磁盘 -> 
+      case DATA_CACHE: // 原始数据缓存 -> 
         return new DataCacheGenerator(decodeHelper, this);
-      case SOURCE: // 服务器 ->
+      case SOURCE: // 服务器的数据 ->
         return new SourceGenerator(decodeHelper, this);
       case FINISHED:
         return null;
@@ -169,13 +174,14 @@ private DataFetcherGenerator getNextGenerator() {
   }
 ```
 这部分是有点状态机的感觉。3个方法，按照前后顺序我称之为`1号状态机`，`2号状态机`，`3号状态机`。结合方法内的注释，1号状态机负责整个流程的步骤：比如是否为
-第一次?是否获取到了数据?是否开始处理数据?。2号发动机则详细负责怎么样获取数据：如从内存缓存还是磁盘缓存还是服务器。3号发动机则负责具体的获取数据：如实内存
-缓存则创建ResourceCacheGenerator实体，等等。    
+第一次?是否获取到了数据?是否开始处理数据?。2号发动机则详细负责获取怎么样数据：要缓存的转换过的图?还是缓存的原图?还是服务器上的图。3号发动机则负责获取数
+据：如要缓存原图你就找DataCacheGenerator，要服务器的图就找SourceGenerator，等等。    
 
 回到runWrapped()，第一次请求图片自然走*INITIALIZE*的case。这里返回的stage是`Stage.RESOURCE_CACHE`。也就是说
 `diskCacheStrategy.decodeCachedResource()`值等于true。这里说下，对于默认磁盘缓存策略(DiskCacheStrategy)，这个值就是true。具体可以追溯到
-SingleRequest#onSizeReady()的engine.load()部分，默认的diskCacheStrategy为：  
+SingleRequest#onSizeReady()的engine.load()部分，默认的diskCacheStrategy为：   
 `@NonNull private DiskCacheStrategy diskCacheStrategy = DiskCacheStrategy.AUTOMATIC;`
+它的初始化代码
 ```text
 public static final DiskCacheStrategy AUTOMATIC =
       new DiskCacheStrategy() {
@@ -204,15 +210,14 @@ public static final DiskCacheStrategy AUTOMATIC =
 ResourceCacheGenerator的实例，来执行到它的startNext()方法。因为接下会有一个重复`startNext()`，又回到`runGenerators()`以及3个状态机调用的流
 程(这里面是一个循环)，所以接下会以步骤流程的形式说明：
 
-* 第一次startNext()在ResourceCacheGenerator：尝试获取cacheKey，但是很明显，第一次请求必然是没有cache的，所以会直接返回false，进入到循环体。此
-  时stage = RESOURCE_CACHE，currentGenerator = ResourceCacheGenerator。一次循环后，stage = DATA_CACHE，currentGenerator =
+* 第一次startNext()是ResourceCacheGenerator：尝试获取cacheKey，但是很明显，第一次请求必然是没有cache的，所以会直接返回false，执行到循环体。此
+  时stage = RESOURCE_CACHE，currentGenerator = ResourceCacheGenerator。循环体执行后：stage = DATA_CACHE，currentGenerator =
   DataCacheGenerator。
   
-* 第二次startNext()在DataCacheGenerator：第一次请求modelLoaders未被初始化，也没有缓存，直接返回false，再次进入循环体。此时stage = 
+* 第二次startNext()是DataCacheGenerator：第一次请求modelLoaders未被初始化，也没有缓存，直接返回false，再次进入循环体。此时stage = 
   RESOURCE_CACHE，currentGenerator = DataCacheGenerator。再次循环后，stage = SOURCE，currentGenerator = SourceGenerator。
-  
-* 因为stage = SOURCE，所以会执行循环体的reschedule()。reschedule()方法此时将runReason = SWITCH_TO_SOURCE_SERVICE。同时执行一个callback。
-  这个callback是EngineJob。callback.reschedule()就是EngineJob使用线程池执行了这个DecodeJob。于是再次回到DecodeJob的run方法，再到它的
+  因为stage = SOURCE，所以会执行循环体的reschedule()。reschedule()方法此时将runReason = SWITCH_TO_SOURCE_SERVICE。同时执行一个callback。
+  这个callback是EngineJob。callback.reschedule()就是EngineJob使用线程池再次执行这个DecodeJob。于是再次回到DecodeJob的run方法，再到它的
   runWrapped()。这次不同的是runReason = SWITCH_TO_SOURCE_SERVICE。所以直接调用runGenerators(),最后来到SourceGenerator#startNext()。(
   因为前面的状态都保存起来了，这次一步到位)
 
@@ -225,7 +230,7 @@ ResourceCacheGenerator的实例，来执行到它的startNext()方法。因为�
 
   
 8、SourceGenerator#startNext()##helper.getLoadData()  
-> 这个getLoadData还是有必要单独抽出来提下，<https://blog.csdn.net/FooTyzZ/article/details/89642968>这部分也有提到。相差不是很明显。从
+> 这个getLoadData还是有必要单独抽出来提下，<https://blog.csdn.net/FooTyzZ/article/details/89642968>这部分也有提到。差距不是很大。从
 >  getLoadData()#glideContext.getRegistry().getModelLoaders(model)处开始
 
 这有几个步骤需要提下：
@@ -355,14 +360,14 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
 到这里返回了一个LoadData实例。LoadData里面的fetcher是HttpUrlFetcher。第三阶段结束。整个helper.getLoadData()方法return。返回到
 `SourceGenerator#startNext()`。
 
-
-9、知道了`loadData.fetcher`是HttpUrlFetcher，对于第7点的关键点就有结果了
+9、知道了`loadData.fetcher`是HttpUrlFetcher，对于第7点的关键点就有结果了。在SourceGenerator#startNext()中while部分的if判断的3个条件：
 * loadData不等于null；
-* loadData.fetcher.getDataSource()等于DataSource.REMOTE，结果与默认磁盘缓存策略isDataCacheable()结果相同
-* (这点不看也可以，因为这是或，有一个条件成立即可)
-
-10、*startNextLoad()*
-* 主要通过HttpUrlFetcher请求图片资源。HttpUrlFetcher#loadData()代码
+* loadData.fetcher.getDataSource()等于DataSource.REMOTE，结果与默认磁盘缓存策略isDataCacheable()结果相同，所以它是true。
+* 第三个判断(这点不看也可以，因为这是或上第二个条件，2者有一个条件成立即可)
+所以会执行startNextLoad()方法，同时将started赋值为true，最后return。
+  
+10、*SourceGenerator#startNextLoad()*
+> `loadData.fetcher`的fetcher是HttpUrlFetcher，通过HttpUrlFetcher请求图片资源。看到HttpUrlFetcher#loadData()代码
 ```text
   public void loadData(
       @NonNull Priority priority, @NonNull DataCallback<? super InputStream> callback) {
@@ -383,24 +388,24 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
   }
 ```
 
-11、*loadDataWithRedirects()*
+11、*HttpUrlFetcher#loadDataWithRedirects()*
 * 构建HttpURLConnection
 * 获取图片的Stream
-* 将资源callback
+* 将资源callback(callback是在SourceGenerator中声明传入的)
 
-12、*onDataReadyInternal()*
+12、*SourceGenerator#onDataReadyInternal()*
 * 将获取的资源赋值给dataToCache
-* `cb.reschedule()`切换到原始线程(glide开始请求的)
+* `cb.reschedule()`切换到原始线程(其中cb指DecodeJob)
 > `cb.reschedule()`在前面的*第6.*，也就是说状态机状态转换地方说明过。结果就是会再次重新执行一次DecodeJob#run(),来到SourceGenerator#startNext()。
-> 但是此时的`dataToCache`不再试null了，执行到cacheData()方法，将图片资源写入磁盘缓存，初始化DataCacheGenerator实例，执行它的startNext()。
+> 但是此时的`dataToCache`不再试null了，执行到cacheData()方法，将图片资源(原始)写入磁盘缓存，初始化DataCacheGenerator实例，执行它的startNext()。
 
-13、DataCacheGenerator#startNext()
-> modelLoaders未被初始化，等于null；sourceIdIndex自加等于0，而cacheKeys的size是等于1的，所以会执行到while所有逻辑。
+13、*DataCacheGenerator#startNext()*
+> modelLoaders未被初始化，等于null；sourceIdIndex自加等于0，而cacheKeys的size是等于1的，所以会执行第一个while的所有逻辑。
 * 从cacheKey中获取sourceId，根据这个id创建DataCacheKey，并以此作为key从DiskCache获取到之前的图片资源，赋值给cacheFile
 * 初始化modelLoaders`helper.getModelLoaders(cacheFile)` (二阶段)
 * 初始化loadData (三阶段)
 * 执行loadData.fetcher.loadData()
-* return true，SourceGenerator#startNext()return true。
+* 最后return true；同样外面执行它的SourceGenerator#startNext()也return true。
 
 这里与`SourceGenerator#startNext()`的那三个阶段是一样的，具体参照*第8.的二阶段与三阶段*。注意的是SourceGenerator中的`model`是String.class，这
 里的`model`是File.class。接着就是到Glide类中寻找，根据具体的条件过滤。这里得到的`modelLoaders`是`ByteBufferFileLoader`,`loadData`是`LoadData`
@@ -423,11 +428,14 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
 
 17、*DecodeJob#notifyEncodeAndRelease()*
 * 执行notifyComplete()，完成请求，准备设置图片环节。
-* stage赋值Stage.ENCODE，执行DeferredEncodeManager#encode(..)将资源添加到内存缓存(DiskLruCache)
+* stage赋值Stage.ENCODE，执行DeferredEncodeManager#encode(..)将转换过的数据添加到磁盘缓存中(DiskLruCache)
 * 执行onEncodeComplete()，状态初始化。如stage，model，currentGenerator等等
-> notifyComplete()方法就是通过callback回到EngineJob#onResourceReady()方法。在这里初始化一些常量后调用`notifyCallbacksOfResult()`。通过遍历
-> `cbs`的回调，返回到SingleRequest#onResourceReady()准备为View设置图片。(`cbs`怎么来的可以看*第5、*)
+> notifyComplete()方法就是通过callback回到EngineJob#onResourceReady()方法。
 
+18、 再次回到*EngineJob#onResourceReady()*
+> 在这里初始化一些常量后调用`notifyCallbacksOfResult()`方法。在这个方法里，1、首先校验取消状态，如果取消了就将资源回收；2、重新将图片resource包装
+> 成一个EngineResource，通过`engineJobListener.onEngineJobComplete()`回调到`Engine`，将EngineResource添加到ActiveResources保存(内存缓存)。
+> 最后通过遍历`cbs`的回调，返回到SingleRequest#onResourceReady()准备为View设置图片。(`cbs`怎么来的可以看*第5、*)
 
 ##### 3、设置图片阶段
 1、*SingleRequest#onResourceReady(...) 回调接口方法，3个参数*
@@ -452,6 +460,73 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
  
 
 #### 缓存原理
+> glide从缓存中获取图片有2种形式，内存缓存与磁盘缓存。
+
+内存缓存又分2种：ActiveResources与LruResourceCache。
+
+> 从内存缓存获取图片在整个加载流程中可追溯到`Engine#load()`方法。这里正是`into()`之后的流程。
+```text
+ // 省略代码...
+    EngineKey key =
+        keyFactory.buildKey(
+            model,
+            signature,
+            width,
+            height,
+            transformations,
+            resourceClass,
+            transcodeClass,
+            options);
+    EngineResource<?> memoryResource;
+    synchronized (this) {
+      memoryResource = loadFromMemory(key, isMemoryCacheable, startTime);
+      if (memoryResource == null) {
+        return waitForExistingOrStartNewJob(
+   // 省略代码...
+```
+loadFromMemory()分别从2个方法分别获取图片缓存，分别是loadFromActiveResources()，对应就是ActiveResources实现；以及loadFromCache()，对应就
+是MemoryCache。但MemoryCache是一个接口，初始化是LruResourceCache完成的。
+
+1、loadFromActiveResources()
+> 这方法就是通过对应的key从ActiveResources中get对应的资源。如果获取到，对应的resource内部计数器+1(通过这个计数器来表示资源的活跃程度)，返回此资源。
+
+1.1、ActiveResources
+> 1、这个类内部维护了一个HashMap<Key, ResourceWeakReference>用来保存图片Resource，所以在ActiveResources中的缓存又称弱引用缓存。
+  ActiveResources提供activate()方法(保存)，deactivate()方法(删除)，get()方法(读取)用来增删查。
+
+> 2、除维护一个HashMap用来保存图片Resource外，还维护一个ReferenceQueue队列，定期将map中保存的resource转移到LruResourceCache中。ActiveResources
+> 内部会开启一个线程，通过`cleanReferenceQueue()`方法循环清理ReferenceQueue中保存的resource。cleanReferenceQueue方法调用
+  cleanupActiveReference()将map中对应的那个资源移除，达到queue与map数据同步；最后通过listener将移除的resource转移到LruResourceCache中。
+
+
+2、loadFromCache()
+> 从LruResourceCache中获取对应的resource，获取成功后，该resource计数器+1，同时将该resource从cache转移到ActiveResources中。
+
+2.1、LruResourceCache
+> 继承了LruCache，应用LRU(最近最少使用)淘汰算法。内部通过LinkedHashMap来实现LRU。
+
+
+3、磁盘缓存获取：
+> ResourceCacheGenerator(获取转换过的资源) -> DataCacheGenerator(原始数据) -> SourceGenerator()(服务器数据)
+
+总结：
+> 以一个新图片资源请求为例，它的存取流程为：首先从内存缓存中的弱引用缓存集ActiveResources中读取，然后尝试到LruResourceCache中获取。如果无法读取到目
+> 标资源将会从磁盘缓存中读取；先尝试从转换过的磁盘缓存中读取，然后尝试从原始资源(未转换过)缓存中读取。如果都无法获取，将请求服务器，从服务器获取图片。请求
+> 图片下来后先把原始图片资源(未解码、未转换)缓存到磁盘(如果允许做磁盘缓存)，然后对图片进行转换，解码，再缓存转换过的图片资源到磁盘。在设置，显示图片之前，
+> 再保存到弱引用缓存集中。当加载图片的页面结束后，回调RequestManager#onDestroy()方法(Glide能绑定页面的生命周期)。在这里遍历所有的target，执行
+> clear(target)，通过target获取对应的request，执行request.clear()。也就是SingleRequest#clear()。最终弱引用缓存集中的EngineResource执
+> 行release()方法。内部的计数器自减，当计数器等于0时，通过回调保存到LruCache中，完成从弱引用缓存到LruCache的转移。
 
 
 #### 其他问题
+
+为什么glide内存缓存要设计2层?
+> 用弱引用缓存的资源都是当前活跃资源ActiveResource，保护这部分资源不会被LruCache算法回收，同时使用频率高的资源将不会在LruCache中查找，相当于
+> 替LruCache减压。
+
+
+glide如何与activity、fragment绑定生命周期?
+> glide绑定页面的生命周期是由RequestManager实现的。在执行`Glide.with()`时会调用到RequestManagerRetriever.get(...)方法，参数可以是activity
+> 或fragment,或者其他Context。在get()的过程中会创建一个Fragment(RequestManagerFragment)，这个fragment持有一个
+> Lifecycle(ActivityFragmentLifecycle)，这个lifecycle绑定了fragment的生命周期，在构建RequestManager时会将这个fragment的lifecycle传入，
+> 届时通过addListener()将RequestManager与lifecycle关联。达到RequestManager绑定内部fragment生命周期的效果。
