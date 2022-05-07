@@ -288,8 +288,8 @@ String.class的才符合。结合这个条件，能得出符合条件的Entry有
   .append(String.class, AssetFileDescriptor.class, new StringLoader.AssetFileDescriptorFactory())
  
 8.3 *this.<Model, Object>build(entry)* 
-> 这一步的build()实际上是执行了`entry.factory.build(this)`。entry.factory就是registry.append(..)方法参数中的第三个参数。分别跟踪这四个factory
-> 后得出对应的4个ModelLoader为：
+> 这一步的build()实际上是执行了`entry.factory.build(this)`。entry.factory就是registry.append(..)方法参数中的第三个参数。分别跟踪这四个
+> factory后得出对应的4个ModelLoader为：
 * DataUrlLoader.StreamFactor -> DataUrlLoader
 * StringLoader.StreamFactory -> StringLoader(Uri.class, InputStream.class)
 * StringLoader.FileDescriptorFactory() -> StringLoader(Uri.class, ParcelFileDescriptor.class)
@@ -396,8 +396,10 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
 12、*SourceGenerator#onDataReadyInternal()*
 * 将获取的资源赋值给dataToCache
 * `cb.reschedule()`切换到原始线程(其中cb指DecodeJob)
-> `cb.reschedule()`在前面的*第6.*，也就是说状态机状态转换地方说明过。结果就是会再次重新执行一次DecodeJob#run(),来到SourceGenerator#startNext()。
-> 但是此时的`dataToCache`不再试null了，执行到cacheData()方法，将图片资源(原始)写入磁盘缓存，初始化DataCacheGenerator实例，执行它的startNext()。
+
+> 注意`cb.reschedule()`在前面的*第6.*，也就是说状态机状态转换地方说明过。结果就是会再次重新执行一次DecodeJob#run(),来到
+> SourceGenerator#startNext()。但是此时的`dataToCache`不再试null了，执行到cacheData()方法，将图片资源(原始)写入磁盘缓存。成功保存到
+> 磁盘后，初始化DataCacheGenerator实例，执行它的startNext()读取成功保存到磁盘的文件缓存，成功读取return true结束。
 
 13、*DataCacheGenerator#startNext()*
 > modelLoaders未被初始化，等于null；sourceIdIndex自加等于0，而cacheKeys的size是等于1的，所以会执行第一个while的所有逻辑。
@@ -408,18 +410,18 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
 * 最后return true；同样外面执行它的SourceGenerator#startNext()也return true。
 
 这里与`SourceGenerator#startNext()`的那三个阶段是一样的，具体参照*第8.的二阶段与三阶段*。注意的是SourceGenerator中的`model`是String.class，这
-里的`model`是File.class。接着就是到Glide类中寻找，根据具体的条件过滤。这里得到的`modelLoaders`是`ByteBufferFileLoader`,`loadData`是`LoadData`
-实例，`loadData.fetcher`是`ByteBufferFetcher`。
+里的`model`是File.class。接着就是到Glide类中寻找，根据具体的条件过滤。这里得到的`modelLoaders`是`ByteBufferFileLoader`,`loadData`是
+`LoadData`实例，`loadData.fetcher`是`ByteBufferFetcher`。
 
 14、*ByteBufferFetcher#loadData*
 * 读取文件资源
 * 携带数据callback
-> 这里callback回到 DataCacheGenerator#onDataReady()，然后再一个`cb.onDataFetcherReady()`回到`SourceGenerator#onDataFetcherReady()`。在
-> onDataFetcherReady()方法回到DecodeJob#onDataFetcherReady()。
+> 这里callback回到 DataCacheGenerator#onDataReady()，然后再一个`cb.onDataFetcherReady()`回到`SourceGenerator#onDataFetcherReady()`。
+> 在onDataFetcherReady()方法回到DecodeJob#onDataFetcherReady()。
 
 15、*DecodeJob#onDataFetcherReady()*
-* 判断当前线程是否是最初的那条线程。如果不是，赋值runReason`RunReason.DECODE_DATA`，借助`callback.reschedule(this)`一直返回到那条线程。这样即是
-  重新运行的run方法，因为runReason = `RunReason.DECODE_DATA`，也会直接执行decodeFromRetrievedData()方法，不会再去请求资源。
+* 判断当前线程是否是最初的那条线程。如果不是，赋值runReason`RunReason.DECODE_DATA`，借助`callback.reschedule(this)`一直返回到那条线程。这样
+  即是重新运行的run方法，因为runReason = `RunReason.DECODE_DATA`，也会直接执行decodeFromRetrievedData()方法，不会再去请求资源。
 * 原始资源解码decodeFromRetrievedData()。
 
 16、*DecodeJob#decodeFromRetrievedData*
@@ -434,7 +436,7 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
 
 18、 再次回到*EngineJob#onResourceReady()*
 > 在这里初始化一些常量后调用`notifyCallbacksOfResult()`方法。在这个方法里，1、首先校验取消状态，如果取消了就将资源回收；2、重新将图片resource包装
-> 成一个EngineResource，通过`engineJobListener.onEngineJobComplete()`回调到`Engine`，将EngineResource添加到ActiveResources保存(内存缓存)。
+> 成一个EngineResource，通过`engineJobListener.onEngineJobComplete()`回调到`Engine`，将EngineResource添加到ActiveResources保存(内存缓存)
 > 最后通过遍历`cbs`的回调，返回到SingleRequest#onResourceReady()准备为View设置图片。(`cbs`怎么来的可以看*第5、*)
 
 ##### 3、设置图片阶段
@@ -446,9 +448,9 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
 * 将当前的status设置为Status.COMPLETE
 * 其他监听器的成功回调(onResourceReady())
 * 为View设置图片(`target.onResourceReady(result, animation)`)
-> 这里的target要追溯到Glide#into()方法(*前面第4、*)，就是在那里创建并且传递过来的。target是`DrawableImageViewTarget`示例。但是onResourceReady()
-> 是父类方法，DrawableImageViewTarget并没重写。它的父类是`ImageViewTarget`。在这里调用`setResourceInternal()`方法，设置图片以及图片。设置图片的方
-> 法`setResource()`是抽象方法，由它的子类DrawableImageViewTarget实现。
+> 这里的target要追溯到Glide#into()方法(*前面第4、*)，就是在那里创建并且传递过来的。target是`DrawableImageViewTarget`示例。但是
+> onResourceReady()是父类方法，DrawableImageViewTarget并没重写。它的父类是`ImageViewTarget`。在这里调用`setResourceInternal()`方法，
+> 设置图片以及图片。设置图片的方法`setResource()`是抽象方法，由它的子类DrawableImageViewTarget实现。
 
 3、*DrawableImageViewTarget#setResource()*
 ```
@@ -494,20 +496,74 @@ loadFromMemory()分别从2个方法分别获取图片缓存，分别是loadFromA
 > 1、这个类内部维护了一个HashMap<Key, ResourceWeakReference>用来保存图片Resource，所以在ActiveResources中的缓存又称弱引用缓存。
   ActiveResources提供activate()方法(保存)，deactivate()方法(删除)，get()方法(读取)用来增删查。
 
-> 2、除维护一个HashMap用来保存图片Resource外，还维护一个ReferenceQueue队列，定期将map中保存的resource转移到LruResourceCache中。ActiveResources
-> 内部会开启一个线程，通过`cleanReferenceQueue()`方法循环清理ReferenceQueue中保存的resource。cleanReferenceQueue方法调用
+> 2、除维护一个HashMap用来保存图片Resource外，还维护一个ReferenceQueue队列，定期将map中保存的resource转移到LruResourceCache中。
+> ActiveResources内部会开启一个线程，通过`cleanReferenceQueue()`方法循环清理ReferenceQueue中保存的resource。cleanReferenceQueue方法调用
   cleanupActiveReference()将map中对应的那个资源移除，达到queue与map数据同步；最后通过listener将移除的resource转移到LruResourceCache中。
-
 
 2、loadFromCache()
 > 从LruResourceCache中获取对应的resource，获取成功后，该resource计数器+1，同时将该resource从cache转移到ActiveResources中。
 
 2.1、LruResourceCache
-> 继承了LruCache，应用LRU(最近最少使用)淘汰算法。内部通过LinkedHashMap来实现LRU。
+> 继承了LruCache，应用了LRU(最近最少使用)淘汰算法。内部通过LinkedHashMap来实现LRU。还实现了MemoryCache接口。它的几个核心方法：
+* get() 根据key从LinkedHashMap取出value。
+* put() 根据key保存value到LinkedHashMap。先判断当前缓存容量是否已满，如果满了则回收掉，否则添加到LinkedHashMap。更新缓存map内的元素数量
+* trimToSize(int maxSize)  传入一个size，维持map内元素在size范围内。超出的元素从开始依次移除(回收)。
+
+3、EngineResource
+> 请求数据的包装类，作为缓存的实体保存在ActiveResources中，内部维护一个计数器`acquired`作为图片加载的次数。每请求加载一次，调用一
+> 次acquire()方法，acquired+1；当页面结束会调用release()方法，acquired-1，当acquired等于0时，这个resource将被移出ActiveResources，转
+> 移到LruResourceCache。当内存紧张调用recycle()释放掉(回收)
+
+3.1、拓展(ComponentCallbacks,ComponentCallbacks2)
+> ComponentCallbacks2继承ComponentCallbacks(都是接口)，用于内存管理。四大组件都有实现这个接口。Glide类同样实现该接口用于管理内存。通过回调它的
+> `onTrimMemory()`执行`trimMemory()`方法，而Glide类持有了LruResourceCache的实例，间接更新LruResourceCache中内存缓存数量。同时更新内存缓
+> 存的还有BitmapPool。
 
 
-3、磁盘缓存获取：
-> ResourceCacheGenerator(获取转换过的资源) -> DataCacheGenerator(原始数据) -> SourceGenerator()(服务器数据)
+4、磁盘缓存：
+> 读取过程： ResourceCacheGenerator(获取转换过的资源) -> DataCacheGenerator(原始数据) -> SourceGenerator()(服务器数据)
+> 写入过程：SourceGenerator#cacheData()(原始数据) -> DecodeJob#notifyEncodeAndRelease()(获取转换过的资源)
+
+4.1、DiskCache
+> 在写入原始数据时调用的DecodeHelper#getDiskCache().put()或者写入转换过的数据调用的DiskCacheProvider#getDiskCache().put()都是
+> LazyDiskCacheProvider来实现。DiskCacheProvider是一个接口，唯一实现类就是LazyDiskCacheProvider。LazyDiskCacheProvider#getDiskCache()
+> 有2种类型。优先级高的是由`factory.build()`构建出来，另一个是DiskCacheAdapter(它里面的方法几乎都是空方法，不用去看)。`factory`是
+> DiskCache.Factory，它的实现是InternalCacheDiskCacheFactory(在GlideBuilder类初始化)。InternalCacheDiskCacheFactory规定了一个叫
+> "image_manager_disk_cache"，大小为250M的文件目录。可见磁盘缓存的图片是放在data/data/.../cache/image_manager_disk_cache目录下。它继
+> 承DiskLruCacheFactory，build()方法返回的是DiskLruCacheWrapper实例。DiskLruCacheWrapper是DiskLruCache的包装类。真正去做读写缓存的是这个
+> DiskLruCache类与DiskLruCacheWrapper。
+
+4.2、DiskLruCache与DiskLruCacheWrapper
+> DiskLruCache应用了LRU算法，内部维护一个LinkedHashMap<String, Entry>。Entry是由图片文件、存储路径、文件大小等属性封装而成。然后提供了Editor与
+> Value2个类对外暴露，间接访问Entry。Editor用于写入保存，Value用于读取。每次读取图片时优先从LinkedHashMap中查找，找不到再检查Entry对象内的文件是否
+> 存在。最后封装成Value对象返回。保存图片时构建一个Entry对象添加到LinkedHashMap，然后封装成Editor返回。
+
+> DiskLruCacheWrapper核心方法：
+* put() 保存缓存文件到磁盘，配合DiskLruCache#edit()将文件包装成一个Editor，通过`editor.getFile(0)`得到file，最后调用`writer(file)`写入到磁
+  盘。调用editor.commit()更新DiskLruCache。
+* get() 从磁盘读取缓存文件,调用DiskLruCache#get()拿到包装好的Value对象，通过`value.getFile(0)`得到File文件。
+
+> DiskLruCache核心方法
+* open()  DiskLruCacheWrapper第一次调用getDiskCache()方法时会调用open方法。核心就是读取journal文件，将磁盘的缓存写到内存(LinkedHashMap)
+* edit()  根据key生成一个Entry实例添加到LinkedHashMap，然后包装成一个Editor返回，同时写入一条“DIRTY”日志
+* completeEdit()  释放编辑锁；处理临时的tmp文件；校验文件length；同时写入一条“CLEAN”日志
+* get()  从LinkedHashMap获得目标Entry，包装成Value返回；同时写入一条“READ”日志
+* remove()  从LinkedHashMap移除目标Entry，以及从磁盘删除目标文件；同时写入一条“REMOVE”日志
+
+
+4.3、DiskLruCache中LinkedHashMap的恢复
+> DiskLruCache内部维护一个LinkedHashMap，每次读取都优先从map获取，相当于从磁盘读取切换成了从内存读取，速度上有很大的提升。但随着(应用)页面结束，
+> DiskLruCache也会被释放销毁，这个LinkedHashMap也会销毁，之前的缓存也全部回收了。但为了实现依旧能从内存中读取，创建DiskLruCache时会初始化这个
+> LinkedHashMap。借助journal日志文件，重新将缓存添加到map中。
+
+4.4、DiskLruCache的journal日志文件机制
+> 主要用于恢复LinkedHashMap的缓存对象。每次初始化DiskLruCache时会访问journal文件。journal文件保存的是操作记录，比如put操作会生成一条“DIRTY”
+> 与一条“CLEAN”记录；get操作会生成一条“READ”记录；remove操作生成一条“REMOVE”记录。读取journal文件时就能将缓存添加到LinkedHashMap。
+
+4.5 Editor与Value
+> 提供Editor与Value的好处就是方便灵活，能够做到统一处理。无论保存的资源是bitmap是drawable还是其他，存储在磁盘后都成了文件。再统一包装成Entry，Entry
+> 包含了在内存中的文件缓存引用，在磁盘中的缓存路径，文件大小等等属性。
+
 
 总结：
 > 以一个新图片资源请求为例，它的存取流程为：首先从内存缓存中的弱引用缓存集ActiveResources中读取，然后尝试到LruResourceCache中获取。如果无法读取到目
@@ -524,9 +580,15 @@ loadFromMemory()分别从2个方法分别获取图片缓存，分别是loadFromA
 > 用弱引用缓存的资源都是当前活跃资源ActiveResource，保护这部分资源不会被LruCache算法回收，同时使用频率高的资源将不会在LruCache中查找，相当于
 > 替LruCache减压。
 
-
 glide如何与activity、fragment绑定生命周期?
 > glide绑定页面的生命周期是由RequestManager实现的。在执行`Glide.with()`时会调用到RequestManagerRetriever.get(...)方法，参数可以是activity
 > 或fragment,或者其他Context。在get()的过程中会创建一个Fragment(RequestManagerFragment)，这个fragment持有一个
 > Lifecycle(ActivityFragmentLifecycle)，这个lifecycle绑定了fragment的生命周期，在构建RequestManager时会将这个fragment的lifecycle传入，
 > 届时通过addListener()将RequestManager与lifecycle关联。达到RequestManager绑定内部fragment生命周期的效果。
+
+DiskLruCache中LinkedHashMap如何恢复?
+>初始化DiskLruCache时会借助journal日志文件，重新将缓存添加到这个LinkedHashMap中，完成对LinkedHashMap的初始化。
+
+DiskLruCache的journal日志文件机制?
+> 主要用于恢复LinkedHashMap的缓存对象。journal文件保存的是操作记录，比如put操作会生成一条“DIRTY”与一条“CLEAN”记录；get操作会生
+> 成一条“READ”记录；remove操作生成一条“REMOVE”记录。初始化DiskLruCache时读取journal文件将缓存添加到LinkedHashMap。
