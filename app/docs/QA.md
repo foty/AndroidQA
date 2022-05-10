@@ -76,7 +76,7 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 <p>
 
 ##### 谈谈gradle的Transform 和 APT(Annotation Processor Tool 注释处理器)   
-[](base_build/构建技术.md)
+[](base_build/构建技术之APT.md)
 <p>
 
 ##### android中的动画(与view相关)
