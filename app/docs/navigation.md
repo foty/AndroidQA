@@ -39,7 +39,7 @@
 * APT(Annotation Processing Tool,即注解处理器) [](base_build/构建技术之APT.md)
 * 依赖注入(DI)
 * Hilt (di框架)
-* ASM插桩，Hook，字节码
+* ASM插桩，Hook，epic,字节码
 * 插件化
 * 全埋点技术
 
