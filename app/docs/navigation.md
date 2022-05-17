@@ -1,16 +1,17 @@
-#### Android相关基本知识 (刚需)
+#### Android相关基本知识
 
 * 四大组件 [](android/activity.md)
 * Handler [](android/Handler.md)
 * View  [](android/View.md)
+* Binder
 * 事件分发(滑动冲突处理) [](android/事件分发.md)
 * 动画 [](android/动画.md)
 * 图片
-* 性能优化
 * 序列化(Serializable与Parcelable) [](android/序列化.md)
+* 性能优化
+* kotlin
 * webView优化
 * JNI
-* kotlin
 
 #### java知识
 
@@ -37,9 +38,10 @@
 * 签名机制 [](base_build/签名机制.md)
 * AOP [](base_build/构建技术之AOP.md)
 * APT(Annotation Processing Tool,即注解处理器) [](base_build/构建技术之APT.md)
+* gradle [](base_build/Gradle.md)
 * 依赖注入(DI)
 * Hilt (di框架)
-* ASM插桩，Hook，epic,字节码
+* Hook，epic,字节码
 * 插件化
 * 全埋点技术
 

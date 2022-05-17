@@ -12,14 +12,14 @@
 
 
 ##### 2、使用场景
-编译期自动生成类，借助反射技术实现。
+编译期自动生成类，借助反射技术获取实例使用。金典案例如`ButterKnife`。
 
 
 ##### 3、实现APT
-参考<https://www.jianshu.com/p/7af58e8e3e18>
+参考<https://www.jianshu.com/p/7af58e8e3e18>  
 参考<https://blog.csdn.net/u010982507/article/details/121192988>
 
-*实践部分  
+
 1、创建注解
 > 一般来说，为了更好地管理代码，通常会创建一个新的Library库来保存注解类。  
 创建注解，声明作用目标以及保存周期，例子如下：
@@ -30,24 +30,23 @@ public @interface FindView {
     int value();
 }
 ```
->对新建注解添加上@Retention、*@Target2个注解。
-
+对于新建注解添加上@Retention、*@Target2个注解,其中：   
 *@Retention* (保留周期，有3种选择)
-* SOURCE：只保留在源文件，当编译成.class文件时被编译器丢弃。
-* CLASS：能保留到.class文件中，当jvm加载class文件时被丢弃。
-* RUNTIME：不仅保留在.class文件中jvm加载完class文件后仍然保留。
+> * SOURCE：只保留在源文件，当编译成.class文件时被编译器丢弃。
+> * CLASS：能保留到.class文件中，当jvm加载class文件时被丢弃。
+> * RUNTIME：不仅保留在.class文件中jvm加载完class文件后仍然保留。
 
 *@Target* (作用目标)
 > 常见的有：
-* METHOD：  方法
-* FIELD： 成员变量
-* TYPE：  类、接口、枚举、等
-* PACKAGE： 包
+> * METHOD：  方法
+> * FIELD： 成员变量
+> * TYPE：  类、接口、枚举、等
+> * PACKAGE： 包
 
 
 2、注解处理类
 > 注释处理类首先要添加依赖，使用`auto-service`。在项目的build.gradle文件中添加
-```
+```text
 // 这里是做了分库处理，注解处理类当中会使用，需要引用进来
 implementation project(':apt-annotation')
 implementation 'com.google.auto.service:auto-service:1.0-rc6'
