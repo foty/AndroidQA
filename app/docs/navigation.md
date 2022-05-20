@@ -37,7 +37,6 @@
 * 编译打包流程 [](base_build/编译打包流程.md)
 * 签名机制 [](base_build/签名机制.md)
 * AOP [](base_build/构建技术之AOP.md)
-* APT(Annotation Processing Tool,即注解处理器) [](base_build/构建技术之APT.md)
 * gradle [](base_build/Gradle.md)
 * 依赖注入(DI)
 * Hilt (di框架)

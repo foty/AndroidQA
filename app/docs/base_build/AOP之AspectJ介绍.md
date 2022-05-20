@@ -5,7 +5,7 @@
 * 3、怎么用
 
 #### 1、是什么
-是一个AOP织入框架(静态织入),在编译期注入代码(.java -> .class过程)。  
+是一个AOP织入框架(静态织入),在编译期注入代码(.java -> .class过程)。 [AspectJ官方](http://www.eclipse.org/aspectj/) 
 
 优点：
 * 切入点固定
