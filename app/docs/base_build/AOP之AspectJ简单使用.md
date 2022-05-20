@@ -1,5 +1,6 @@
 ### AspectJ简单使用
 
+[参考](https://www.jianshu.com/p/9325a4f90605)
 
 1、开始先添加依赖配置。  
 在**项目根目录**下的`build.gradle`添加配置：
@@ -12,7 +13,7 @@ buildscript {
     }
 }
 ```
-在**模块(app)**下的`build.gradle`文件添加依赖：
+在**对应模块**下的`build.gradle`文件添加依赖：
 ```groovy
 dependencies {
     implementation 'org.aspectj:aspectjrt:1.8.8'
@@ -92,6 +93,14 @@ plugins {
     id 'android-aspectjx'
 }
 ```
+如果在debug阶段注重编译速度，可以关闭代码织入。在模块下的 build.gradle 文件下
+```text
+aspectjx {
+    //关闭AspectJX功能
+    enabled false
+}
+```
+
 2、开始编写代码逻辑。   
 定义一个注解，用来标注切点。
 ```java
