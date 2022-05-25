@@ -5,9 +5,11 @@
 * 3、怎么用
 
 #### 1、是什么
-是一个AOP织入框架(静态织入),在编译期注入代码(.java -> .class过程)。 [AspectJ官方](http://www.eclipse.org/aspectj/) 
+
+是一个AOP织入框架(静态织入),在编译期注入代码(.java -> .class过程)。 [AspectJ官方](http://www.eclipse.org/aspectj/)
 
 优点：
+
 * 切入点固定
 * 正则表达式
 * 性能偏低
@@ -23,14 +25,44 @@
 
 #### 3、怎么用
 
+使用AspectJ一定要先了解几个知识：
+
+* 切面：使用`@Aspect`标识的类称之为一个切面。一个切面通常包含一个独立的功能实现。
+* 切点：声明需要织入的位置。
+* 通知：对声明切点的监听，一般把需要织入的功能逻辑代码编写在这里。
+
+##### 切面
+
+这个没什么好说的，切记使用`@Aspect`标识声明是一个切面即可。
+
+##### 切点
+所谓切点，也可以称之为一个有特殊标志的方法。如：
+```text
+    @Pointcut("execution(xxxxx * * (..))")
+    public void LoginFilter() {}
+```
+其中：
+* 方法名称可以任意
+* 必须使用`@Pointcut()`注解修饰
+* 注解内的value是一种正则表达式的匹配规则
+
+关于正则匹配：通常格式为：`"[切点关键字] ([限定符] [静态修饰] [final] [返回值类型] [包名.类..] [] [])"`
+
+* 关键字
+* 限定符：public、protected、private
+* 静态：static
+* final关键字：final
+* 返回值：返回值类型，多数情况使用`*`通配符，表示所有类型。
+* 路径
+
 可分为以下步骤：
+
 * 注解模块：声明指定功能的注解。比如一个登录拦截的注解，在需要使用登录拦截功能时，只添加上注解即可实现拦截功能；
 
 * 辅助类辅助工具类：主要根据功能来设计，常见的设计有接口回调，管理类等等，主要用于沟通切面与主业务功能之间的联系；
 
 * 切面模块：aop的核心。功能上就是完成需要重复判断编写的逻辑等等。需要有专门的框架知识储备(如AspectJ)，具体可以参考
   <https://blog.csdn.net/zhengchao1991/article/details/53391244>
-
 
 [简单例子](AOP之AspectJ简单使用.md)
 [AspectJ.pdf](https://github.com/hyvenzhu/Android-Demos/blob/master/AspectJDemo/AspectJ.pdf)
