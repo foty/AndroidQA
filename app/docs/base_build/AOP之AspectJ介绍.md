@@ -72,8 +72,9 @@ public void activityOnCreate() {
 * within：用来匹配指定类型内的连接点，可以是类名，也可以是包名；如：`@Pointcut("within(xxx.xxx.xxx.xx *)")`
 * target：用来匹配当前目标对象的连接点；注意是目标对象的匹配；
 
-[更多切点用法看连接](https://blog.csdn.net/zhengchao1991/article/details/53391244)
-
+[更多切点用法](https://blog.csdn.net/zhengchao1991/article/details/53391244)
+[切点用法II](https://blog.51cto.com/u_12004792/3138400)
+[切点用法III](https://www.jianshu.com/p/49d2be4c508d)
 
 ##### 3.3通知
 通知表示对切点的监听处理。处理逻辑一般写在这个位置。  
