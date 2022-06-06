@@ -91,6 +91,6 @@ public void activityOnCreate() {
 
 * 3、切面模块：aop的核心。功能上就是切点，通知的编写。需要有专门的框架知识储备(如AspectJ)。
   
-
+[](https://www.jianshu.com/p/49d2be4c508d)
 [简单例子](AOP之AspectJ简单使用.md)
 [AspectJ.pdf](https://github.com/hyvenzhu/Android-Demos/blob/master/AspectJDemo/AspectJ.pdf)
