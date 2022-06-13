@@ -61,9 +61,7 @@
 
 #### 计算机网络知识
 
-* http与https
-  怎么判断弱网环境，然后怎么处理弱网情况(加大超时时间，自动重试，复合链接)
-  dns优化 和 缓存
+* http与https [](http/net.md)
 * TCP/UDP
 * HTTP1.0/HTTP2.0/HTTP3.0
 * DNS
