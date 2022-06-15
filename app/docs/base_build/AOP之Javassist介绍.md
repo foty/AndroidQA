@@ -88,3 +88,4 @@ class InjectByJavassist {
 参考   
 [使用资料I-语法API](https://www.jianshu.com/p/43424242846b)
 [案例实战I](https://www.jianshu.com/p/33d8a3165b07)
+[javassist官方文档中文翻译](https://github.com/IndustriousSnail/javassist-learn)
