@@ -11,15 +11,14 @@
 http，即超文本传输协议，基于TCP/IP协议传输数据。想了解http需要了解以下：
 * URL
 * 报文
-* TCP/IP
 * 报文传输过程
+* http进化史
 
 ##### URL 
 URL就是常说的链接。如：`http://192.168.1.1:8080/getData?name=xx&city=xx` 。这个例子基本就是URL的
 模板，[http://<host>:<port>/<path>?<...>] ==> [http://<ip>:<端口>/<访问资源以及参数>]。另外就是像
 `https://www.baidu.com/` 这样的没有明显显示ip、端口，在请求访问时，dns会将域名 www.baidu.com 解析成百度
 真实的ip地址。域名与IP地址是N:1的关系。
-
 
 ##### 报文
 
@@ -76,7 +75,6 @@ Content-Type: application/json;charset=UTF-8
 {"code":"200","msg":"成功","data":"data"}　　--------响应数据
 ```
 
-
 ##### 报文传输过程
 <https://www.jianshu.com/p/dd7d8d2e6b3d>
 
@@ -90,8 +88,31 @@ Content-Type: application/json;charset=UTF-8
 * 服务器发送响应报文给客户端。
 * 关闭连接。
 
+##### http进化史
+* 远古版本
+* http1.0 --最早在网页中使用是在1996年。
+  > 支持POST、DELETE、PUT、HEADER等
+  > 增加请求头、响应头概念
+  > 扩充传输内容格式，如图片、视频、二进制等
+* http1.1 --1999年
+  > 区别上个版本：
+  > 缓存策略，http1.1引入了更多缓存策略，如cache-control、Entity tag、If-Match等缓存头。  
+  > http1.1增加了[range]头域，可以请求部分资源。  
+  > http1.1支持长连接处理；
+* SPDY --2012，Http1.x的优化
+  > 区别上个版本：
+  > 降低延迟，使用了多路复用
+  > 请求优先级，允许给每个request设置优先级
+  > Header压缩，可以减小数据包的大小和数量
+  > 基于https的加密协议传输，提高传输数据的可靠性
+* http2.0  --2015，SPDY的升级版
+  > 区别上个版本：
+  > 二进制分帧，Http1.x的解析是基于文本，Http2.0的协议解析采用二进制格式
+  > Http2.0支持明文http传输，而SPDY强制使用Https
+  > HTTP2.0消息头的压缩算法采用[HPACK]，而SPDY采用的[DEFLATE]
 
-#### Https
+
+#### 2、Https
 
 Http协议传输的数据都是未加密的，也就是明文的传输，导致传输隐私信息非常不安全。为了保证这些隐私数据能加密传输，于是网景公司设计
 了SSL(Secure Sockets Layer)协议用于对HTTP协议传输的数据进行加密，从而就诞生了Https。Https就是加密的Http，等于HTTP + SSL/TLS。
@@ -105,6 +126,11 @@ Http协议传输的数据都是未加密的，也就是明文的传输，导致�
 
 > https中，传送加密随机值是非对称加密。只有服务器能解密。之后的数据通信都是对称加密。
 
+##### 与Http的区别
+
+* http是超文本传输协议，信息是明文传输；https则是具有安全性的ssl加密传输协议。(传输形式)
+* http和https使用的是完全不同的连接方式，用的端口也不一样，http是80,https是443。(连接端口)
+* http的连接很简单,是无状态的；HTTPS协议是由SSL+HTTP协议构建的可进行加密传输、身份认证的网络协议，要比http协议安全。(连接形式)
 
 ##### 对称加密
 
@@ -121,7 +147,7 @@ Http协议传输的数据都是未加密的，也就是明文的传输，导致�
 
 <br>
 
-#### 计算机的网络模型
+#### 4、计算机的网络模型
 <https://blog.csdn.net/weixin_34179762/article/details/88729259>
 
 通常来说，计算机中的网络模型比较流传的有OSI参考模型(7层)、TCP/IP模型(4层)、计算机教学版本(教科书)则是按照(5层)版本来讲授。
@@ -251,12 +277,25 @@ NFS | 远程文件服务器
 
 dns优化和缓存
 DNS有啥缺点?为啥国内要用HttpDNS?
-Http & Https的区别?
-为啥要用Https?
-Http 1.0 vs Http 2.0?
-<https://juejin.cn/post/6844903489596833800>
 
-对称加密 & 非对称加密?
+Http & Https的区别?
+> http是超文本传输协议，信息是明文传输；https则是具有安全性的ssl加密传输协议;
+> http和https使用的是完全不同的连接方式，用的端口也不一样，http是80,https是443。
+> http的连接很简单,是无状态的，HTTPS协议是由SSL+HTTP协议构建的可进行加密传输、身份认证的网络协议，要比http协议安全。
+
+为啥要用Https?
+> Https能提供对网站服务器的身份 认证，保护交换数据的隐私与完整性。比起Http更加安全。
+
+Http1.0 vs Http1.1区别
+> 缓存策略，http1.1引入了更多缓存策略，如Entity tag、If-Match等缓存头。
+> http1.1增加了[range]头域，可以请求部分资源。
+> 长连接，http1.1支持长连接处理；
+
+http2.0 vs http1.x区别
+> 多路复用(连接共享)
+> header压缩
+> 二进制分帧，全新的二进制传输格式
+<https://juejin.cn/post/6844903489596833800>
 
 Https 的三次握手是怎样的过程?
 > 看到上面[TCP的连接 (3次握手、4次挥手)]。
