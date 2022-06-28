@@ -62,8 +62,6 @@
 #### 计算机网络知识
 
 * http与https [](http/net.md)
-* TCP/UDP
-* HTTP1.0/HTTP2.0/HTTP3.0
 * DNS
 * quic
   ...
