@@ -3,7 +3,7 @@
 * 四大组件 [](android/activity.md)
 * Handler [](android/Handler.md)
 * View  [](android/View.md)
-* Binder
+* Binder [](android/binder.md)
 * 事件分发(滑动冲突处理) [](android/事件分发.md)
 * 动画 [](android/动画.md)
 * 图片
