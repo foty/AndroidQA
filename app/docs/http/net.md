@@ -117,6 +117,22 @@ Content-Type: application/json;charset=UTF-8
 Http协议传输的数据都是未加密的，也就是明文的传输，导致传输隐私信息非常不安全。为了保证这些隐私数据能加密传输，于是网景公司设计
 了SSL(Secure Sockets Layer)协议用于对HTTP协议传输的数据进行加密，从而就诞生了Https。Https就是加密的Http，等于HTTP + SSL/TLS。
 
+##### SSL/TLS
+
+SSL即 Secure Socket Layer，翻译为安全套接层协议；TLS，即transport layer security，翻译为安全传输层协议。注意：1999年，SSL成为互联网上
+的标准，名称改为TLS。所以SSL/TLS是同一种东西的不同阶段体现。SSL/TLS的工作层位于应用层与传输层之间(也有划分到应用层的情况，但是绝不会在传输
+层)。从上到下：
+
+协议 | 工作层
+:---: | :---
+HTTP | 应用层
+(SSL/TLS)| 应用层与传输层之间
+TCP | 传输层
+IP | 网络层
+
+<https://www.jianshu.com/p/3d6e0fe05e4c>
+
+
 ##### Https通信流程
 
 * 客户端使用Https的url访问服务端，与服务端建立SSL连接。
@@ -129,6 +145,7 @@ Http协议传输的数据都是未加密的，也就是明文的传输，导致�
 ##### 与Http的区别
 
 * http是超文本传输协议，信息是明文传输；https则是具有安全性的ssl加密传输协议。(传输形式)
+* http不需要证书，https需要证书  
 * http和https使用的是完全不同的连接方式，用的端口也不一样，http是80,https是443。(连接端口)
 * http的连接很简单,是无状态的；HTTPS协议是由SSL+HTTP协议构建的可进行加密传输、身份认证的网络协议，要比http协议安全。(连接形式)
 
@@ -280,6 +297,7 @@ DNS有啥缺点?为啥国内要用HttpDNS?
 
 Http & Https的区别?
 > http是超文本传输协议，信息是明文传输；https则是具有安全性的ssl加密传输协议;  
+> http不需要证书，https需要证书；
 > http和https使用的是完全不同的连接方式，用的端口也不一样，http是80,https是443。  
 > http的连接很简单,是无状态的，HTTPS协议是由SSL+HTTP协议构建的可进行加密传输、身份认证的网络协议，要比http协议安全。  
 
