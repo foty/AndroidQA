@@ -62,8 +62,8 @@
 #### 计算机网络知识
 
 * http与https [](http/net.md)
-* DNS
-* quic
+* DNS [](http/DNS.md)
+* quic [](http/QUIC.md)
   ...
 
 #### 数据结构算法

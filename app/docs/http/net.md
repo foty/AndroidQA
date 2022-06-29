@@ -89,7 +89,7 @@ Content-Type: application/json;charset=UTF-8
 * 关闭连接。
 
 ##### http进化史
-* 远古版本
+* 远古版本 http0.9,80年后期。
 * http1.0 --最早在网页中使用是在1996年。
   > 支持POST、DELETE、PUT、HEADER等  
   > 增加请求头、响应头概念   
@@ -110,7 +110,15 @@ Content-Type: application/json;charset=UTF-8
   > 二进制分帧，Http1.x的解析是基于文本，Http2.0的协议解析采用二进制格式  
   > Http2.0支持明文http传输，而SPDY强制使用Https  
   > HTTP2.0消息头的压缩算法采用[HPACK]，而SPDY采用的[DEFLATE]  
-
+* QUIC --2019年
+  > 特点：  
+  > 使用UDP协议，无连接，不需要握手，更快；
+  > 无队头阻塞的多路复用
+  > 可拔插拥塞控制
+  > 连接迁移
+* http3.0 --又称为HTTP Over QUIC，其弃用TCP协议，改为使用基于UDP协议的QUIC协议来实现
+  > 区别上个版本：  
+  > 使用QUIC协议(UDP类型)，而不是TCP
 
 #### 2、Https
 
@@ -293,7 +301,10 @@ NFS | 远程文件服务器
 > 加大超时时间，自动重试，复合链接
 
 dns优化和缓存
+> 优化：IP直连、使用HttpDns
+
 DNS有啥缺点?为啥国内要用HttpDNS?
+> 缺点：不稳定、不准确、不及时。HttpDNS对比传统DNS具有域名防劫持、精准调度等特点，更安全、更稳定。
 
 Http & Https的区别?
 > http是超文本传输协议，信息是明文传输；https则是具有安全性的ssl加密传输协议;  
@@ -314,6 +325,9 @@ http2.0 vs http1.x区别
 > header压缩
 > 二进制分帧，全新的二进制传输格式
 <https://juejin.cn/post/6844903489596833800>
+
+http3.0?
+> 基于QUIC的新协议
 
 Https 的三次握手是怎样的过程?
 > 看到上面[TCP的连接 (3次握手、4次挥手)]。
