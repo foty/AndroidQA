@@ -17,7 +17,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -73,6 +80,25 @@ public class MainActivity extends AppCompatActivity {
 //        ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(tv, "translationX", 0, 100).setDuration(1 * 1000);
 //        objectAnimator.start();
 
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+        OkHttpClient client = builder.build();
+        Request request = new Request.Builder()
+                .addHeader("cookie", "10086")
+                .url("http://123456.com")
+                .build();
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+
+            }
+        });
     }
 
     @Override
