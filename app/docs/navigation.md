@@ -21,7 +21,7 @@
 * 反射 [](java/反射.md)
 * (多)线程 [](java/线程.md)
 * 锁、并发 [](java/并发(锁).md)
-* 泛型
+* 泛型 [](java/泛型.md)
 * 加密
 * JVM
 * GC
@@ -55,6 +55,7 @@
 * LruCache原理
 * liveData (粘性事件导致数据倒灌---先setValue，再observer,还能收到事件)
 * ARouter
+* Gson
 * RxJava 原理、操作符、背压
 * Leaks
   ...
