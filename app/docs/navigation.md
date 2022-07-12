@@ -23,7 +23,7 @@
 * 锁、并发 [](java/并发(锁).md)
 * 泛型 [](java/泛型.md)
 * 加密
-* JVM
+* JVM [](java/jvm.md)
 * GC
 * 内存模型
 * 类加载过程
