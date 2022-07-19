@@ -24,9 +24,9 @@
 * 泛型 [](java/泛型.md)
 * 加密
 * JVM [](java/jvm.md)
-* GC
-* 内存模型
-* 类加载过程
+* GC [](java/jvm.md)
+* 内存模型 [](java/jvm.md)
+* 类加载过程 [](java/jvm.md)
   ...
 
 #### frameWork与编译
