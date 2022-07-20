@@ -16,7 +16,7 @@
 #### java知识
 
 * 各版本特性
-* java语法结构
+* java基础、语法结构 [](java/java基础.md)
 * 集合 [](java/集合.md)
 * 反射 [](java/反射.md)
 * (多)线程 [](java/线程.md)

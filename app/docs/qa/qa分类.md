@@ -1,4 +1,4 @@
-Java部分
+Java部分 [](../qa/java部分.md)
 Android基础部分
 Android进阶部分
 计算机网络部分
