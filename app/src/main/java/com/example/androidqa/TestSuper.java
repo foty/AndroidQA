@@ -5,7 +5,7 @@ package com.example.androidqa;
  * Date : 2022/2/18 11:53
  * Use by
  */
-class TestSuper extends TestSuperSup{
+public class TestSuper extends TestSuperSup{
     public void sup1(){}
     public void m1(String s){
         System.out.println("super m m m1");
