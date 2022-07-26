@@ -8,13 +8,9 @@ import java.util.logging.LogRecord;
  * Date : 2022/7/25
  * Use by
  */
-public class AAA {
+class AAA {
 
-    public static class BBB {
-
-    }
-
-    public class CC extends BBB {
+    public static void go() {
 
     }
 
@@ -30,7 +26,6 @@ public class AAA {
 
     public void buy() {
     }
-
 
     Handler h = new Handler() {
 
@@ -67,4 +62,26 @@ public class AAA {
 
         }
     };
+
+    static class StaticC {
+    }
+
+    class Ddd extends StaticC {
+
+    }
+
+    public static void main(String[] args) {
+        StaticC c = new StaticC();
+        Ddd ddd = new Ddd();
+    }
+}
+
+class BBB extends AAA {
+    private void to() {
+    }
+
+    //    @Override
+    public static void go() {
+
+    }
 }
