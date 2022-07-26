@@ -72,7 +72,7 @@ class AAA {
 
     public static void main(String[] args) {
         StaticC c = new StaticC();
-        Ddd ddd = new Ddd();
+//        Ddd ddd = new Ddd();
     }
 }
 
