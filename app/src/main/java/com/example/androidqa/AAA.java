@@ -10,10 +10,6 @@ import java.util.logging.LogRecord;
  */
 class AAA {
 
-    public static void go() {
-
-    }
-
     private String name;
     public String age;
     String tool;
@@ -21,12 +17,17 @@ class AAA {
     private void say() {
     }
 
-    void talk() {
+    public void talk() {
+        StaticC buy = buy();
+        System.out.println("--- "+buy);
     }
 
-    public void buy() {
+    StaticC buy() {
+        System.out.println("--- AAA buy");
+        return new StaticC("11");
     }
 
+    // 匿名内部类
     Handler h = new Handler() {
 
         private String a;
@@ -63,17 +64,20 @@ class AAA {
         }
     };
 
-    static class StaticC {
+    // 静态内部类
+    public static class StaticC {
+        StaticC(String c) {
+
+        }
+
+        private String name;
+
+        void tes() {
+
+        }
     }
 
-    class Ddd extends StaticC {
 
-    }
-
-    public static void main(String[] args) {
-        StaticC c = new StaticC();
-//        Ddd ddd = new Ddd();
-    }
 }
 
 class BBB extends AAA {
