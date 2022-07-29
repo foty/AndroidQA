@@ -294,10 +294,40 @@ get:
 > 频繁转换。
 
 ##### 二分搜索树的特性和原理
+特性
+> 每个节点的值都小于其右子树的所有节点的值；   
+> 每个节点的值都大于其左子树的所有节点的值；     
+> 每一棵子树也是二分搜索树；
+
 ##### 堆的实现，最大堆，最小堆，优先队列原理
-##### Comparable 和 Comparator 的区别
-##### LRU实现
-##### ArrayMap 和 SparseArray
+> 堆的实现：使用优先队列(java自带的API PriorityQueue)、使用数组
+
+优先队列
+> 优先队列是一种特殊的队列，为元素赋予优先级，具有最高优先级的元素成为队列头部，一般分最大优先队列、最小优先队列。通过
+> 下沉或上浮操作，保存队列头部始终最大或最小。
+
+##### Comparable和Comparator的区别
+> 所在包类不一样：comparable在`java.lang`包下，comparator在`java.util`包下   
+> 实现重写方法不一样；实现comparable要重写compareTo(T o)方法；实现comparator要重写compare(T o1,T o2)方法；   
+> Comparable是排序接口，实现它的类意味着自己本身具有比较功能，将自己与另外一个对象比较排序；Comparator是比较接口，
+> 实现它的类能够将两个不同对象比较，自己本身无法比较排序。Comparable相当于内部比较器，而Comparator相当于外部比较器
+
+##### LRU算法实现
+> Least Recently Used的缩写，即最近最少使用法则。   
+> 实现：使用双向链表+同步机制(比如Hashtable)或者LinkedHashMap。最近命中或新添加的放在头部，链表尾部的将会在容量
+> 满时被移除。
+
+##### ArrayMap和SparseArray
+> SparseArray：使用2个数组(key数组+value数组)，key指定为int类型，不需要hash值，基于二分查找存取数据，提高查找效
+> 率。它的删除也不是真正移除元素，而是设置一个删除标志。存储基本类型数据，避免数据的装箱拆箱，某些情况下性能更好。对
+> 比HashMap，以时间换空间。它的出现是为了节省内存以及提高效率。不需要创建节点消耗内存。但也因为需要移动数组会消耗性
+> 能，所以只适用数据量很小的情况。
+> 
+> ArrayMap：类似ArrayMap，使用2个数组，mHashes和mArray。mHashes记录所有key的hashcode值；mArray记录所有
+> key-value键值对，也都是基于二分查找存取数据。对比HashMap，同样不需要创建节点，节约内存，数据量小时查找效率更高，
+> 不是和数据量大的环境。   
+> > ArrayMap解决hash冲突：向后追加。比如在位置i发生碰撞，则将i后的数据往后移，在i+1位置插入数据。mHash中相同的
+> hashcode都是连接在一起的。
 
 
 ### 3、泛型
