@@ -27,7 +27,7 @@ public class Bb extends AAA {
         b.talk();
 
         List<String> l =  new ArrayList<>();
-        testString(l);
+//        testString(l);
     }
 
     public static void testString(List<Object> o){
