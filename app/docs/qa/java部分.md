@@ -525,19 +525,69 @@ interrupt()一定有效吗
 > synchronized是隐式锁(不需要手动加锁释放锁)，Lock是显示锁(需要手动加锁释放锁)。
 
 ##### synchronized是公平锁还是非公平锁,ReentrantLock是公平锁吗？是怎么实现的。
+> synchronized是非公平锁，因为需要竞争，不是按照顺序。ReentrantLock可以实现为公平锁，也可以实现为非公平锁。通过AQS
+> 实现锁资源竞争。队列是一个FIFO的双向链表，能满足有序竞争锁资源。
 
-##### volatile，synchronized和volatile的区别？为何不用volatile替代synchronized？
 ##### JMM可见性，原子性，有序性，synchronized可以保证什么
-##### 对volatile字段有什么用途？
+> 可以保证可见性，原子性，有序性(多线程下顺序执行)
+
+##### volatile了解吗
+> volatile是Java虚拟机提供的轻量级的同步机制，它的特性有：能保证可见性、但不保证原子性、禁止指令重排。
+
+##### volatile如何保证可见性、禁止指令重排的原理是什么
+> 可见性原理：jvm将.class文件编译成机器码后，使用volatile修饰的变量会在指令添加一个`Lock`前缀。有Lock前缀指令会导
+> 致当前处理器缓存数据会写入到系统内存；而处理器把缓存写入到内存会让其他处理器的缓存失效，当发现这个变量的缓存失效时，会
+> 从内存中重新读取。保证这个变量对于所有线程始终是最新值。
+> 
+> 禁止指令重排的原理：在编译成字节码时，会在volatile变量指令前后插入内存屏障，禁止处理器重排序。
+
+##### volatile字段有什么用途？
+> 能保证可见性、但不保证原子性、禁止指令重排(插入内存屏障)。
+
+内存屏障类型(`Load`-代表读，`Store`代表写)
+
+类型名称  |   指令  | 说明
+:----  |   :----- | :----
+LoadLoad | Load1;_LoadLoad_;Load2 | 确保`读取Load1操作`优先于`读取Load2操作`(以及Load2后面的)
+LoadStore | Load1;_LoadStore_;Store2 | 确保`读取Load1操作`优先于`Store2写入到内存操作`(以及Store2后面的)
+StoreStore | Store1;_StoreStore_;Store2 | 确保`Store1操作`优先于`Store2操作`写入到内存(以及Store2后面的)
+StoreLoad | Store1;_LoadLoad_;Load2 | 确保`Store1写入到内存操作`优先于`读取Load2操作`(以及Load2后面的)
+
+volatile的内存屏障策略插入策略会在这4个位置插入内存屏障，实现禁止指令重排。
+
+##### synchronized和volatile的区别？为何不用volatile替代synchronized？
+> volatile只能使用在变量上，synchronized可以使用在变量和方法与类级别上；   
+> volatile不会造成线程阻塞，synchronized可能会造成线程阻塞；   
+> volatile只能保证可见性，无法保证原子性，synchronized可以原子性和可见性；   
+> volatile能禁止指令重排，synchronized不能禁止指令重排；   
+> 
+
+为何不用volatile替代synchronized
+> volatile无法保证原子性，所以它无法替换synchronized。
+
+有了synchronized为什么还要volatile
+> synchronize不能保证单个线程内部指令的顺序，也就是指令重排，任然有线程安全问题。比如双重检查单例创建问题，为什么还使
+> 用volatile。第二点就是还会阻塞，内部的隐式锁增加性能消耗。
 
 ##### AQS了解吗？
-> `AbstractQueuedSynchronized`的缩写，又称抽象队列式同步器。
+> `AbstractQueuedSynchronized`的缩写，又称抽象队列式同步器。作用是给java一系列锁以及同步器或者同步对象的底层提供
+> 了实现的框架，一种规范。提供解决同步问题的基础框架。 
+
+AQS实现：
+> 通过CLH同步队列完成同步状态的管理，如果线程获取同步状态(锁)失败时，AQS会将当前线程构造成一个节点加入
+> 到CLH同步队列尾部，同时会阻塞当前线程。当同步状态(锁)释放时，会把首节点唤醒(公平锁)，使其再次尝试获取同步状态。
+>
+> CLH(Craig, Landin ,and Hagersten)：--同步(等待)队列，是一个FIFO双向队列，拥有pre前驱节点、next后驱节点。   
+> FIFO(first-in-first-out)：--先进先出；   
 
 ##### AtomicInteger如何保证原子操作
 > CAS + Volatile。  
 > UnSafe的作用：获取对象偏移量，拥有直接操作对象内存地址的能力。直接操作内存效率更高。
 
 ##### CAS如何保证原子操作,CAS原理
+> 
+
+##### CAS会产生什么问题
 ##### notify和notifyAll区别,锁池,等待池
 
 
