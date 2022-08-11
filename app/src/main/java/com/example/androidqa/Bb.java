@@ -13,6 +13,14 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Bb extends AAA {
 
+    static {
+        System.out.println("--- 静态代码块");
+    }
+
+    public Bb(){
+        System.out.println("--- 构造方法");
+    }
+
     static class StaticB extends AAA.StaticC {
 
         StaticB(String c) {
