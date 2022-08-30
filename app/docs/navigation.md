@@ -53,7 +53,7 @@
 * Retrofit
 * Glide [](third_frame/glide.md)
 * LruCache原理
-* liveData (粘性事件导致数据倒灌---先setValue，再observer,还能收到事件)
+* liveData  [](third_frame/livedata.md)
 * ARouter
 * Gson
 * RxJava 原理、操作符、背压
