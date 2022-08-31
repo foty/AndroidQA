@@ -48,3 +48,17 @@
 
 * LiveData如何实现订阅者模式，如何处理发送事件?
 > 通过注册观察者，在数据更新时进行数据变更的通知(setValue()、postValue())
+
+* LiveData会内存泄露吗?如何解决。
+> LiveData的观察者通常写成匿名内部类，可能造成内存泄漏。但是livedata具备生命周期感知能力。当生命周期状态
+> 为DESTROYED时，自动移除观察者，很好的避免了内存泄露的发生。
+
+* 粘性LiveData会造成什么问题？怎么解决？
+> 如果使用公用viewModel的话，会导致数据异常，比如重复计算，默认值被改写等。解决方案：   
+> 1、反射修改mLastVersion字段。   
+> 2、SingleLiveEvent(谷歌解决方案)：设置一个中间观察者，继承MutableLiveData拦截上游数据变化，再转发给下游。    
+> 3、使用Flow替换livedata。
+
+* 为什么LiveData会丢失数据?
+> 发生在使用postValue()的情况。使用postValue()时，设置值与实际发出通知之间存在延迟，数据被临时缓存。在这延迟阶段
+> 再次设置新值，之前的值会被覆盖。也就是丢失数据。
