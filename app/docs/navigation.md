@@ -8,7 +8,7 @@
 * 动画 [](android/动画.md)
 * 图片
 * 序列化(Serializable与Parcelable) [](android/序列化.md)
-* 性能优化
+* 性能优化  [](android/性能优化.md)
 * kotlin
 * webView优化
 * JNI
@@ -52,7 +52,7 @@
 * OkHttp [](third_frame/OkHttp3.md)
 * Retrofit
 * Glide [](third_frame/glide.md)
-* LruCache原理
+* LruCache原理 [](third_frame/LruCache.md)
 * liveData  [](third_frame/livedata.md)
 * ARouter
 * Gson
