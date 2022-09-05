@@ -2486,8 +2486,8 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
   
 
 * 在onResume()使用`handler.postRunnable`能获取到View的宽高吗?
-> 不能，onResume()触发在ActivityThread的performResumeActivity()方法，handleResumeActivity()方法内才有将WindowManager添加DecorView，才有了绘
-制流程。performResumeActivity()方法在handleResumeActivity()之前执行。等于说onResume回调时，还没开始绘制。
+> 不能，onResume()触发在ActivityThread的performResumeActivity()方法，在handleResumeActivity()方法内，通过`wm.addView(decor, l);`将
+> WindowManager添加DecorView，开始绘制流程。performResumeActivity()方法在addView()之前执行。等于说onResume回调时，还没开始绘制。
   
 
 * 在onResume()使用`view.postRunnable`能获取到View的宽高吗?
