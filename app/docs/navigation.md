@@ -6,13 +6,18 @@
 * Binder [](android/binder.md)
 * 事件分发(滑动冲突处理) [](android/事件分发.md)
 * 动画 [](android/动画.md)
-* 图片
+* 图片 glide
 * 序列化(Serializable与Parcelable) [](android/序列化.md)
 * 性能优化  [](android/性能优化.md)
 * kotlin (协程)
 * Jetpack 
 * webView优化
 * JNI
+* 模块化(组件化)框架 aRouter
+* 热修复框架 tinker robust andfix
+* 插件化框架 shadow
+* 数据库框架 greendao rooom objectX
+* 注入型框架 butterknife databinding dagger2 hilt
 
 #### java知识
 
@@ -24,6 +29,7 @@
 * 锁、并发 [](java/并发(锁).md)
 * 泛型 [](java/泛型.md)
 * 加密
+* IO
 * JVM [](java/jvm.md)
 * GC [](java/jvm.md)
 * 内存模型 [](java/jvm.md)
