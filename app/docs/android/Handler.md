@@ -284,6 +284,8 @@ epoll的对比与优势：
 ###### Handler的几个问题
 * 1、Handler 的基本原理
 > 上面总结。  
+> Handler将Message发送到Looper的消息队列中，即MessageQueue，通过Looper的循环读取Message，处理Message。然后调用Message.target，也就是的Handler
+> 的dispatchMessage()方法，将该消息回调到handleMessage()方法中，然后完成更新UI操作。
 
 * 2、子线程中怎么使用 Handler?
 > 在创建Handler对象前调用`Looper.prepare();`,在创建完后调用`Looper.loop();`。
