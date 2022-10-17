@@ -53,6 +53,15 @@
 
 ...
 
+#### 计算机网络知识
+
+* http与https [](http/net.md)
+* socket通信
+* DNS [](http/DNS.md)
+* quic [](http/QUIC.md)
+  ...
+
+
 #### 框架原理
 
 * RecyclerView(缓存机制、滑动回收)[](third_frame/recyclerview.md)
@@ -67,13 +76,7 @@
 * Leaks [](third_frame/LeakCanary.md)
   ...
 
-#### 计算机网络知识
-
-* http与https [](http/net.md)
-* DNS [](http/DNS.md)
-* quic [](http/QUIC.md)
-  ...
-
+  
 #### 数据结构算法
 基本数据结构(数组，集合，哈希表，链表，树，堆，图)
 
