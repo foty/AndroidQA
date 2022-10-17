@@ -6,11 +6,11 @@
 * Binder [](android/binder.md)
 * 事件分发(滑动冲突处理) [](android/事件分发.md)
 * 动画 [](android/动画.md)
-* 图片 glide
+* 图片
 * 序列化(Serializable与Parcelable) [](android/序列化.md)
 * 性能优化  [](android/性能优化.md)
-* kotlin (协程)
-* Jetpack 
+* kotlin (协程) [](kotlin/Kotlin基础.md)
+* Jetpack  [](jetpack/)
 * webView优化
 * JNI
 * 模块化(组件化)框架 aRouter
