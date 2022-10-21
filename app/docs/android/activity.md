@@ -62,7 +62,19 @@ bindService: onCreate() -> onBind() -> onUnBind() -> onDestroy()
 
 
 #### BroadcastReceiver
- ...
+
+##### 广播的分类和使用场景
+> 有序广播、无序广播(没有优先级之分)；系统广播、非系统广播；
+
+##### 广播的两种注册方式的区别?
+> 2种注册方式为静态注册与动态注册。    
+静态注册：会在清单文件中配置广播的相关信息(action name)，直接使用`sendBroadcast(Intent)`发送广播。   
+动态注册：不配置到清单文件，直接new出相关Receiver实例，通过`registerReceiver()`方法注册，同样使用
+`sendBroadcast(Intent)`发送广播。注册的广播记 得最后需要注销广播。
+
+区别：
+> 1、生命周期不同。动态广播是非常驻型广播，跟随Activity生命周期；而静态广播是常驻型广播，与activity无关。    
+> 2、优先级不同。在同优先级的情况下，动态广播接收器优先级比静态广播接收器高。
 
 
 #### ContentProvider
