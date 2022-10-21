@@ -10,7 +10,7 @@
 * Choreographer
 
 
-* 常见问题 [](../qa/View的绘制流程.md)
+* 常见问题 [](../qa/View的绘制流程QA.md)
 
 #### 加载与绘制流程源码跟踪
 [](../sourceCode/View绘制源码分析.md)
