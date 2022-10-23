@@ -12,8 +12,18 @@
 
 * 常见问题 [](../qa/View的绘制流程QA.md)
 
-#### 加载与绘制流程源码跟踪
-[](../sourceCode/View绘制源码分析.md)
+#### 加载与绘制流程
+[](../sourceCode/View绘制源码分析.md)  
+
+简述版本：  
+> view的绘制有三个步骤：测量(measure)，布局(layout)和绘制(draw), 从DecorView自上而下遍历整个View树。
+> 1、测量阶段： 通过调用View的measure()方法获取MeasureSpec(测量规格)信息，经过多次测量，对比最后调用
+> setMeasuredDimension()来设置自身大小。子view还可以重写View#onMeasure()，自己设置大小。   
+> 2、布局阶段： layout()方法中会先调用setFrame()给自身的left，top，right，bottom属性赋值,于是自己在父View中的位置就
+> 确定。然后会调用onLayout()方法，让子View(一般指ViewGroup)自己实现。    
+> 3、绘制阶段： 一般分4步：1、绘制背景；2、绘制视图内容,回调onDraw()；3、绘制子View，回调dispatchDraw()，一般
+> ViewGroup用的比较多；4、绘制装饰，比如滚动条之类的。
+
 
 ##### [绘制流程]View绘制核心方法performTraversals内各大流程方法调用顺序示意图
 private void performTraversals() { 
