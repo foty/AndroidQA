@@ -1,6 +1,6 @@
 #### Android相关基本知识
 
-* 四大组件 [](android/activity.md)
+* 四大组件 [](android/四大组件.md)
 * Handler [](android/Handler.md)
 * View  [](android/View.md)
 * Binder [](android/binder.md)
