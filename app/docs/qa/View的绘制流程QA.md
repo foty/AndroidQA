@@ -247,6 +247,10 @@ public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
 > invalidate()在主线程中使用；postInvalidate()可以在非主线程使用，其中使用了handler作为桥梁。
 
 
+##### view的绘制发生activity的哪个生命周期
+> 在onResume()回调之后。(ActivityThread的handleResumeActivity()内)
+
+
 ##### 为什么onCreate()获取不到View的宽高?
 > 因为view的绘制是在onResume()之后才开始去绘制的，具体在ActivityThread#handleResumeActivity()方法内。
 
