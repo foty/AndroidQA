@@ -46,8 +46,7 @@
 
 ##### onLayout() 和layout()的区别
 > onLayout()是父view，一般都是ViewGroup，确定子view位置调用的方法，通常会配合onMeasure()使用；而layout()是确
-> 定view本身位置调用的方法。一般只会重写
-onLayout()方法，不用重写layout()。
+> 定view本身位置调用的方法。一般只会重写onLayout()方法，不用重写layout()。
 
 
 ##### 如何触发重新绘制？

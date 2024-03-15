@@ -32,7 +32,7 @@ new Handler().post(new Runnable() {
     }
 });
 ```
-```java 姿势2,3
+``` 姿势2,3
 Handler mHandler = new Handler() {
     @Override
     public void handleMessage(Message msg) {
