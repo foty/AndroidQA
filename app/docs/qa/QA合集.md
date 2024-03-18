@@ -1,5 +1,14 @@
-Java部分 [](../qa/answer/java部分.md)
+Java部分 [](../qa/answer/java部分合集.md)
+* 核心基础
+* 数据结构
+* 泛型
+* 多线程编程
+* 加密
+* 反射
+* jvm
+
 Android基础部分 [](answer/android.md)
 Android进阶
-计算机网络部分
+网络编程
+Kotlin部分
 框架原理部分

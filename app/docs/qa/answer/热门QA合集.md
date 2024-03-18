@@ -1,33 +1,22 @@
 
 ##### Java核心基础
-Java中提供了抽象类还有接口，开发中如何去选择呢？
-重载和重写是什么意思，区别是什么？
-静态内部类是什么？和非静态内部类的区别是什么？
-Java中在传参数时是将值进行传递，还是传递引用？
-使用equals和==进行比较的区别
-String s = new String("xxx");创建了几个String对象?
-finally中的代码一定会执行吗？try里有return，finally还执行么
+
+
+
 Java异常机制中，异常Exception与错误Error区别
 序列Parcelable,Serializable的区别？
 为什么Intent传递对象为什么需要序列化？
 
 ##### Java深入泛型与注解
-泛型是什么，泛型擦除呢？
-List能否转为List
+
 Java的泛型中super 和 extends 有什么区别？
 注解是什么？有哪些使用场景？
 
 ##### Java并发编程
-假如只有一个cpu，单核，多线程还有用吗
-sychronied修饰普通方法和静态方法的区别？什么是可见性?
-Synchronized在JDK1.6之后做了哪些优化
-CAS无锁编程的原理
-AQS原理
+
 ReentrantLock的实现原理
 Synchronized的原理以及与ReentrantLock的区别。
-volatile关键字干了什么？（什么叫指令重排）
-volatile 能否保证线程安全？在DCL上的作用是什么？
-volatile和synchronize有什么区别？
+
 
 ##### Java虚拟机原理
 描述JVM类加载过程
