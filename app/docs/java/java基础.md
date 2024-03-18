@@ -10,4 +10,4 @@
 
 #### 其他问题 
 
-[](../qa/java部分.md)
+[](../qa/answer/java部分.md)

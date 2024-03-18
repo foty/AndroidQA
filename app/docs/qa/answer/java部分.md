@@ -162,8 +162,8 @@
 
 ### 2、数据结构、集合容器
 
-HashMap系列 [](../data_structure/HashMap.md)   
-ArrayList部分  [](../data_structure/ArrayList.md)
+HashMap系列 [](../../data_structure/HashMap.md)   
+ArrayList部分  [](../../data_structure/ArrayList.md)
 
 ##### ArrayList、LinkedList、Vector的区别
 > ArrayList：使用可变数组实现，可以添加任何元素，包括null；  
@@ -254,7 +254,7 @@ jdk1.8：
 
 
 ### 3、泛型 
-[文档](../java/泛型.md)
+[文档](../../java/泛型.md)
 
 ##### 泛型常用特点，泛型有什么优点
 > 性能高。存储值类型或转换为值类型时不需要装箱和拆箱；  
@@ -288,8 +288,8 @@ PECS：
 
 
 ### 4、线程、多线程、线程池、同步
-[文档](../java/线程.md)
-[文档](../java/线程池.md)
+[文档](../../java/线程.md)
+[文档](../../java/线程池.md)
 
 ##### 实现多线程的两种方法。
 > 继承Thread类或实现Runnable接口。

@@ -42,7 +42,7 @@
 [](kotlin/Kotlin基础.md)
 
 ##### java
-[](qa/java部分.md)
+[](qa/answer/java部分.md)
 
 ##### jetpack
 viewBinding、viewModel [](jetpack/ViewModel.md)、
