@@ -53,7 +53,7 @@
 > 2、使用频率高的资源将不会在LruCache中查找，相当于替LruCache减压。
 
 ##### Glide的内存管理
-> 
+>  
 
 ##### 说说activity的newIntent方法
 > 1、Activity的启动模式设置为SingleTop时，如果该activity在栈顶，再次启动同个activity，这时会调用onNewIntent方法；
