@@ -1,8 +1,6 @@
 
 ##### Java核心基础
 
-
-
 Java异常机制中，异常Exception与错误Error区别
 序列Parcelable,Serializable的区别？
 为什么Intent传递对象为什么需要序列化？
@@ -14,33 +12,18 @@ Java的泛型中super 和 extends 有什么区别？
 
 ##### Java并发编程
 
-ReentrantLock的实现原理
-Synchronized的原理以及与ReentrantLock的区别。
 
 
 ##### Java虚拟机原理
-描述JVM类加载过程
-请描述new一个对象的流程
-Java对象会不会分配到栈中？
-GC的流程是怎么样的？介绍下GC回收机制与分代回收策略
-Java中对象如何晋升到老年代？
-判断对象是否被回收，有哪些GC算法，虚拟机使用最多的是什么算法？
-Class会不会回收？用不到的Class怎么回收？
-Java中有几种引用关系，它们的区别是什么？
-描述JVM内存模型
+
 StackOverFlow与OOM的区别？分别发生在什么时候，JVM栈中存储的是什么，堆存储的是什么？
 
 ##### Java反射类加载与动态代理
-PathClassLoader与DexClassLoader的区别是什么？
-什么是双亲委托机制，为什么需要双亲委托机制？
-Android中加载类的方法有哪些？有什么区别？
-ClassNotFound的有可能的原因是什么？
-odex了解吗？解释型和编译型有什么区别？
-说说反射的应用场景，哪些框架？
-反射为什么慢？
+
 动态代理是什么？如何实现？
 动态代理的方法怎么初始化的？
 CGLIB动态代理
+
 
 ##### 网络编程
 请你描述TCP三次握手与四次挥手的过程与意义

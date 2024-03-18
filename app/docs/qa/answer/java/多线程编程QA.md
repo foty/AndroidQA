@@ -212,14 +212,14 @@ _EntryList(处于等待锁block状态的线程队列)。
 > 状态值记录线程是否获得锁。没有获得锁的线程构建成节点添加到同步队列，设置成尾结点，通过底层方法进入阻塞状态。设置尾结点
 > 是需要保证线程安全的所以需要通过CAS完成。当上一个获得锁的线程释放锁后，队列唤醒头结点的线程，尝试获取锁。
 
-##### synchronized和Lock区别
+##### synchronized和Lock(ReentrantLock)区别
 > synchronized是一个关键字，Lock是一个接口；   
 > synchronized能自动释放锁，Lock不会；   
 > synchronized只能等待锁释放，Lock可以中断等待；   
 > synchronized是独占锁，Lock可以实现为独占锁，也可以是共享锁；   
 > synchronized是隐式锁(不需要手动加锁释放锁)，Lock是显示锁(需要手动加锁释放锁)。
 
-##### synchronized是公平锁还是非公平锁,ReentrantLock是公平锁吗？是怎么实现的。
+##### synchronized是公平锁还是非公平锁，ReentrantLock是公平锁吗？
 > synchronized是非公平锁，因为需要竞争，不是按照顺序。ReentrantLock可以实现为公平锁，也可以实现为非公平锁。通过AQS
 > 实现锁资源竞争。队列是一个FIFO的双向链表，能满足有序竞争锁资源。
 

@@ -7,7 +7,7 @@
 
 ####什么是jvm
 
-JVM，即JavaVirtualMachine，Java虚拟机的缩写。是一种用于计算设备的规范，一个虚构出来的计算机。是处理java程序的核心，也是java跨平台的核心。
+JVM，即Java Virtual Machine，Java虚拟机的缩写。是一种用于计算设备的规范，一个虚构出来的计算机。是处理java程序的核心，也是java跨平台的核心。
 采用基于栈的架构，其指令由操作码和操作数组成。
 
 jre：Java Runtime Environment。java运行环境，java平台，所有的java程序要在这个环境下才能运行。   
