@@ -6,7 +6,7 @@
 
 
 ##### 什么是IPC
-> Inter-process communication),也就是进程中间通信
+> Inter-process communication)。也就是进程中间通信；
 
 ##### AIDL的全称是什么？如何工作？能处理哪些类型的数据？
 > Android Interface Definition Language,即Android接口定义语言，用于生成可以在Android设备上两个进程之间进行进程
