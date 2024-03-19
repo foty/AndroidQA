@@ -45,7 +45,6 @@ mHandler.obtainMessage(1).sendToTarget(); //3
 1、准备阶段。即创建Handler对象的过程。  
 Handler的构造方法有分无参构造，1个参数构造，2个参数构造和3个参数构造方法，看2个参数跟3个参数的方法
 ```
-```
     public Handler(@Nullable Callback callback, boolean async) {
         if (FIND_POTENTIAL_LEAKS) {
             final Class<? extends Handler> klass = getClass();
@@ -65,13 +64,14 @@ Handler的构造方法有分无参构造，1个参数构造，2个参数构造�
         mCallback = callback;
         mAsynchronous = async;
     }
-```
-public Handler(@NonNull Looper looper, @Nullable Callback callback, boolean async) {
-    mLooper = looper;
-    mQueue = looper.mQueue;
-    mCallback = callback;
-    mAsynchronous = async;
-}
+    
+    // 3参数构造方法
+    public Handler(@NonNull Looper looper, @Nullable Callback callback, boolean async) {
+        mLooper = looper;
+        mQueue = looper.mQueue;
+        mCallback = callback;
+        mAsynchronous = async;
+    }
 ```
 无参构造最终走向是2个参数的构造方法，这里也是选取2个参数的方法跟踪流程。  
 创建Handler实例时获取了Looper对象。跟踪进去发现`Looper#myLooper()`方法Looper实例是从ThreadLocal中获取的。而设置Looper可以追溯到ActivityThread的启动

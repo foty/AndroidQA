@@ -35,46 +35,33 @@ CGLIB动态代理
 
 
 ##### Android 高级UI
-View的绘制原理
-View绘制流程与自定义View注意点
-自定义view与viewgroup的区别
-View的绘制流程是从Activity的哪个生命周期方法开始执行的
-Activity,Window,View三者的联系和区别
-在onResume中是否可以测量宽高
-如何更新UI，为什么子线程不能更新UI？
-DecorView, ViewRootImpl,View之间的关系
+
+
+
 自定义View执行invalidate()方法,为什么有时候不会回调onDraw()
-invalidate() 和 postInvalicate() 区别
+
 
 ##### Android Framework
-Android中多进程通信的方式有哪些？
-描述下Binder机制原理？
-为什么 Android 要采用 Binder 作为 IPC 机制？
+
+
 Binder线程池的工作过程是什么样？
 AIDL 的全称是什么？如何工作？能处理哪些类型的数据？
 Android中Pid&Uid的区别和联系
-Handler怎么进行线程通信，原理是什么？
-ThreadLocal的原理，以及在Looper是如何应用的？
+
 Handler如果没有消息处理是阻塞的还是非阻塞的？
-handler.post(Runnable) runnable是如何执行的？
 
 ##### Android组件内核
-Acitvity的生命周期，如何摧毁一个Activity?
-Activity的4大启动模式，与开发中需要注意的问题，如onNewIntent() 的调用
-Intent显示跳转与隐式跳转，如何使用？
-Activity A跳转B，B跳转C，A不能直接跳转到C，A如何传递消息给C？
+
 Activity如何保存状态的？
 请描诉Activity的启动流程，从点击图标开始。
-Service的生命周期是什么样的？
-你会在什么情况下使用Service？
-Service和Thread的区别？
-IntentService与Service的区别？
+
+
 
 ##### Android性能优化
-一张图片100x100在内存中的大小？
+一张图片100x100在内存中的大小？  占用的内存大小公式：分辨率 * 每个像素点的大小
 内存优化，内存抖动和内存泄漏。
 什么时候会发生内存泄漏？举几个例子
-Bitmap压缩，质量100%与90%的区别？
+Bitmap压缩，质量100%与90%的区别？  质量压缩：改变图片的位深及透明度
 TraceView的使用，查找CPU占用
 内存泄漏查找
 Android四大组件(以及Application)的onCreate/onReceiver方法中Thread.sleep()，会产生几个ANR?
