@@ -31,10 +31,8 @@ CGLIB动态代理
 
 
 ##### Kotlin
-Kotlin内置标准函数let的原理是什么？
-Kotlin语言的run高阶函数的原理是什么？
-Kotlin语言泛型的形变是什么？
-Kotlin协程在工作中有用过吗？
+
+
 
 ##### Android 高级UI
 View的绘制原理
