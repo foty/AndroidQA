@@ -1,6 +1,7 @@
 
 ### View的绘制相关问题
-* 基本流程
+
+* 基本流程   [](../../../android/view的绘制/View.md)
 * 测量规格
 * 顶层PhoneWindow、DecorView关系，api方法问题
 * 绘制发生的生命周期
@@ -411,12 +412,10 @@ onDetachedFromWindow()可追溯到ActivityThread#handleDestroyActivity()的Windo
 > SurfaceView是Android中一种比较特殊的视图(View)，它跟普通View最大的区别是它跟它的视图容器并不是在同一个视图层上，
 > 它的UI显示也可以不在一个独立的线程中完成，所以对SurfaceView的绘制并不会影响到主线程的运行。
 
-
 ##### 为什么使用SurfaceView
 > View是通过刷新来重绘视图，系统通过发出VSync信号来进行屏幕的重绘，刷新的时间间隔是16ms,如果可以在16ms以内将绘制工
 > 作完成，则没有任何问题，如果绘制过程逻辑很复杂，并且界面更新还非常频繁，这时候就会造成界面的卡顿，影响用户体验，
 > 为此Android提供了SurfaceView来解决这一问题。
-
 
 ##### View与surfaceView的区别?
 > 1、View适用于主动更新的情况，而SurfaceView更适用于被动更新的情况，比如频繁刷新界面。  

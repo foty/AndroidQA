@@ -1,5 +1,9 @@
 ### binder 概念  
 
+* 相关问题： [](../aQA/answer/android/BinderQA.md)
+
+
+##### 什么是binder
 Binder，一种IPC(Inter-process communication),也就是进程中间通信。Binder是Android提供的一套进程间相互通信框架，实
 现跨进程通信。
 从Android应用层的角度来说， Binder是客户端和服务端进行通信的媒介。这里要引出另外俩种概念：IPC，AIDL。    

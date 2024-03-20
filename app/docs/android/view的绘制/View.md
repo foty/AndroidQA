@@ -10,7 +10,7 @@
 * Choreographer
 
 
-* 常见问题 [](../../aQA/View的绘制流程QA.md)
+* 常见问题 [](../../aQA/answer/android/View绘制流程QA.md)
 
 #### 加载与绘制流程
 [](View绘制源码分析.md)  
