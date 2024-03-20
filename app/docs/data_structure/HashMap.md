@@ -4,7 +4,7 @@
 数据结构  
 特点   
 部分原理   
-相关问题
+相关问题  [](../aQA/answer/java/数据结构QA.md)
 
 #### 1、是什么
 HashMap是基于哈希表的 Map 接口的非同步实现的一种特殊集合。以key-value形式存储数据，允许存在null值和null键,有很快

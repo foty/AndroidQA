@@ -1,4 +1,4 @@
-一、Java部分       [](answer/java部分合集.md)
+一、Java部分       
 * 核心基础  [](answer/java/java基础QA.md)
 * 数据结构 [](answer/java/数据结构QA.md)
 * 设计模式

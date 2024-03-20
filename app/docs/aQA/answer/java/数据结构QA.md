@@ -1,7 +1,8 @@
 ### 
-* HashMap 扩容，原理，底层
-* ArrayList
-* 
+
+* 集合      [](../../../data_structure/集合.md)
+* HashMap 扩容，原理，底层       [](../../../data_structure/HashMap.md)
+* ArrayList   [](../../../data_structure/ArrayList.md)
 
 
 ##### HashTable为何废弃

@@ -7,7 +7,4 @@
 * 静态类
 * 内部类
 
-
-#### 其他问题 
-
-[](../aQA/answer/java部分合集.md)
+相关问题  [](../aQA/answer/java/java基础QA.md)
