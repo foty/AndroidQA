@@ -10,4 +10,4 @@
 
 #### 其他问题 
 
-[](../qa/answer/java部分合集.md)
+[](../aQA/answer/java部分合集.md)

@@ -1,6 +1,6 @@
 ##### Android下的消息机制(Handler)
 * handler原理
-* 常见面试问题   [](../qa/answer/android/HandlerQA.md)
+* 常见面试问题   [](../aQA/answer/android/HandlerQA.md)
 
 
 一、先了解几个机制下的对象    
