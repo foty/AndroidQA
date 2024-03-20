@@ -16,7 +16,7 @@
 * 序列化
 * Binder  [](answer/android/BinderQA.md)
 * Framework [](answer/android/frameworkQA.md)
-* 性能优化  [](../android/性能优化.md)
+* 性能优化  [](../android/性能优化/性能优化合集.md)
 * 框架原理  [](answer/android/框架原理QA.md)
 * 插件化、AOP、字节码操作
 * 逆向，反编译
