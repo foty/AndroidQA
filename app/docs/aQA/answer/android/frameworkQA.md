@@ -7,6 +7,8 @@
 * Application
 * AMS
 
+相关知识点： [](../../../framework/启动流程.md)
+
 ##### 描述activity的启动过程?
 启动Activity，通常有两种情况，一种是通过startActivity启动，另一种是通过Launcher启动。
 > 1、Linux内核的init进程fork出zygote进程：zygote会创建虚拟机、注册一些底层方法，然后会反射调用ZygoteInit的main方法；[此时进程从C层到了java层]

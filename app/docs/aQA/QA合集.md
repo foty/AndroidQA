@@ -8,7 +8,7 @@
 * 反射与动态代理   [](answer/java/反射与动态代理QA.md)
 * jvm  [](answer/java/虚拟机(jvm)QA.md)
 
-二、Android  [](answer/android.md)
+二、Android  [](answer/android汇总.md)
 * 四大组件   [](answer/android/基础知识QA.md)
 * Handler  [](answer/android/HandlerQA.md)
 * View的绘制   [](answer/android/View绘制流程QA.md)
