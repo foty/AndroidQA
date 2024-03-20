@@ -1,4 +1,7 @@
 
+###
+
+* 相关知识点 [](../../../android/四大组件.md)
 
 ##### Activity生命周期
 > onCreate() - onStart() - onResume() - onPause() - onStop() - onDestroy()  onRestart()
