@@ -1,7 +1,7 @@
 
 ### android基础
-- 四大组件 [](../../android/四大组件.md)
-- Handler [](../../android/Handler.md)
+- 四大组件
+- Handler
 - View的绘制流程
 - 事件分发机制
 - binder
