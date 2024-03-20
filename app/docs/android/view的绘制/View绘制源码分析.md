@@ -2102,4 +2102,4 @@ performDraw()的这段代码段`boolean canUseAsync = draw(fullRedrawNeeded);`�
 ,发出绘制完成的消息到整个视图结构。performTraversals()结束。绘制流程结束。
 
 总结一波view绘制设计的API调用链图：  
-[](../图片/img_view绘制.jpg)
+[](../../图片/img_view绘制.jpg)

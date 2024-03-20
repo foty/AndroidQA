@@ -364,7 +364,7 @@ onDetachedFromWindow()可追溯到ActivityThread#handleDestroyActivity()的Windo
 
 ##### 自定义View的优化方案。
 
-##### 屏幕刷新机制
+##### 说说屏幕刷新机制
 > 电脑系统中cpu负责计算数据，gpu负责渲染，显示器负责显示。显示器将数据显示不是一次性完成的，它是按从左到右，从上到下的
 > 顺序显示在屏幕上。比如60Hz的屏幕完成一次刷新花费时间大概是16.6ms(1000/60)。
 
@@ -389,7 +389,7 @@ onDetachedFromWindow()可追溯到ActivityThread#handleDestroyActivity()的Windo
 > Choreographer是用于配合系统的VSync中断信号的一种机制，起到调度的作用。Choreographer接收系统的VSync信号，保证系
 > 统收到VSync信号才开始绘制，让每次绘制拥有完整的16.6ms。业界一般用它监控应用的帧率。
 
-##### Choreographer如何实现的同步
+##### 说说Choreographer如何实现的同步
 > Choreographer通过postCallback()方法将runnable放到内部的一个CallbackQueue数组中，然后开始请求VSync信号(借
 > 助FrameDisplayEventReceiver)，收到信号后由FrameHandler发送消息执行doFrame()方法计算帧数时间，决定是否重新请
 > 求VSync信号或调用doCallbacks()绘制此帧。在doCallbacks()方法内将CallbackQueue数组内的runnable取出依次执行。

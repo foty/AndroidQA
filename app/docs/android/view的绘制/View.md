@@ -10,10 +10,10 @@
 * Choreographer
 
 
-* 常见问题 [](../aQA/View的绘制流程QA.md)
+* 常见问题 [](../../aQA/View的绘制流程QA.md)
 
 #### 加载与绘制流程
-[](../sourceCode/View绘制源码分析.md)  
+[](View绘制源码分析.md)  
 
 简述版本：  
 > view的绘制有三个步骤：测量(measure)，布局(layout)和绘制(draw), 从DecorView自上而下遍历整个View树。

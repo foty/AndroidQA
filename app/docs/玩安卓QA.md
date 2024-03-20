@@ -57,7 +57,7 @@ Activity的onSaveInstanceState回调时机，取决于app的targetSdkVersion：
 从源码开始到view有以下几个点：
 * Window、WindowManager和WMS(WindowManagerService)
 * view的绘制
-详情见: [](android/View.md)
+详情见: [](android/view的绘制/View.md)
 
 <p>
 
@@ -127,7 +127,7 @@ BroadcastReceiver，Service，Application，ContentProvider 中的Context启动a
 <p>
 
 ##### "Android16.6ms刷新一次屏幕"引出 View中VSYNC内容
-[](android/View.md)的 vsync 部分
+[](android/view的绘制/View.md)的 vsync 部分
 <p>
 
 ##### 泛型擦除?  

@@ -4,7 +4,7 @@
 
 * 四大组件 [](android/四大组件.md)
 * Handler [](android/Handler.md)
-* View  [](android/View.md)
+* View  [](android/view的绘制/View.md)
 * Binder [](android/binder.md)
 * 事件分发(滑动冲突处理) [](android/事件分发.md)
 * 动画 [](android/动画.md)
