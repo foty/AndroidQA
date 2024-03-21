@@ -10,7 +10,7 @@
 * 动画 [](android/动画.md)
 * 图片
 * 序列化(Serializable与Parcelable) [](android/序列化.md)
-* 性能优化  [](android/性能优化/性能优化合集.md)
+* 性能优化  [](android/性能优化合集.md)
 * kotlin (协程) [](kotlin/Kotlin基础.md)
 * Jetpack 
 * webView优化

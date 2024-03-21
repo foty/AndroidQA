@@ -19,8 +19,8 @@
 
 ##### Glide对内存方面有什么特别做法吗
 > 1、默认图片格式使用RGB_565，内存占比小
-> 2、缓存
-> 3、Bitmap缓存池
+> 2、3级缓存
+> 3、Bitmap缓存池，Bitmap复用。对BitmapFactory.Options属性设置开启Bitmap复用。可以避免频繁申请内存，避免OOM。
 
 ##### 为什么glide内存缓存要设计2层?
 > 用弱引用缓存的资源都是当前活跃资源ActiveResource，保护这部分资源不会被LruCache算法回收，同时使用频率高的资源将不会在LruCache中查找，相当于
@@ -39,3 +39,9 @@
 > 主要用于恢复LinkedHashMap的缓存对象。journal文件保存的是操作记录，比如put操作会生成一条“DIRTY”与一条“CLEAN”记录；get操作会生
 > 成一条“READ”记录；remove操作生成一条“REMOVE”记录。初始化DiskLruCache时读取journal文件将缓存添加到LinkedHashMap。
 
+##### Glide有哪些缓存策略?
+> AUTOMATIC：默认策略。根据图片资源的数据来决定是否缓存原始图片和转换后的图片。这种策略会尽可能地减少磁盘存储空间的使用，同时保证图片的加载性能。
+> ALL：缓存原始图片和转换后图片；
+> SOURCE：只缓存原始图片；
+> RESULT：只缓存转换后图片；
+> NONE：都不缓存；
