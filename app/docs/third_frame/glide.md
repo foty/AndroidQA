@@ -1,12 +1,15 @@
 
-### Glide
+**Glide**
 
+#### 大纲
 * glide特点、优势
 * glide加载图片的原理
 * glide缓存原理
-* 其他问题
+* 缓存策略
+* 其他问题   [](../aQA/answer/android/GlideQA.md)
 
-#### Glide
+
+#### Glide介绍
 优点：
 * 高效的缓存策略。
 * 内存开销小。默认Bitmap格式是RGB_565。
@@ -14,12 +17,22 @@
 * 图片显示效果为渐变，更加平滑
 
 
-#### 加载原理
- 
-请求图片流程参考下面blog：  
-<https://blog.csdn.net/FooTyzZ/article/details/89642968>
+#### 加载原理(流程)
 
-##### 1、构建阶段阶段
+> glide工作流程大概可以分为3个阶段：
+> 1、准备阶段。这里会创建Glide实例，绑定组件生命周期。
+> 2、获取图片阶段。判断是否有该图片的请求缓存，如果有则从2种缓存中获取到这个请求，没用则重新创建请求。然后执行这个请求job。执行job时会尝试从磁盘读取文件。
+> 首先读取被处理、转换过的磁盘文件(ResourceCacheGenerator)，如果没有便读取原始文件(DataCacheGenerator)，如果还是没有读取到便要从服务器
+> 重新获取图片(SourceGenerator)。最后底层通过HttpURLConnection建立连接，获取图片。根据设置是否缓存原始数据文件。接着对文件处理解码之类，转换成可
+> 供ImageView使用的数据Bitmap，或者BitmapDrawable。
+> 3、设置图片阶段。为into的那个view设置就结束了。
+
+
+
+请求图片流程参考下面blog：  
+https://blog.csdn.net/FooTyzZ/article/details/89642968
+
+##### 1、构建请求阶段
 > Glide起始方法`with()`：
 
 1、获取glide对象。   
@@ -45,10 +58,8 @@ return new Glide(
 > 就是能根据使用场景的生命周期，智能加载图片的一个管理类。
 
 3、Glide的`load()`方法：
-
 * 创建RequestBuilder实例，并且指定资源类型为`Drawable.class`。
 * 将glide实例，请求url，RequestManager等核心对象关联绑定。
-
 
 4、Glide的`into()`方法：
 > 处理ImageView设置的ScaleType。(`RequestBuilder#into(View view)`)
@@ -212,7 +223,7 @@ ResourceCacheGenerator的实例，来执行到它的startNext()方法。因为�
 
 * 第一次startNext()是ResourceCacheGenerator：尝试获取cacheKey，但是很明显，第一次请求必然是没有cache的，所以会直接返回false，执行到循环体。此
   时stage = RESOURCE_CACHE，currentGenerator = ResourceCacheGenerator。循环体执行后：stage = DATA_CACHE，currentGenerator =
-  DataCacheGenerator。
+  DataCacheGenerator。如果找到则会进入到fetcher.loadData()中，这里的fetcher是ByteBufferFetcher。最后回调onDataReady()返回出去。
   
 * 第二次startNext()是DataCacheGenerator：第一次请求modelLoaders未被初始化，也没有缓存，直接返回false，再次进入循环体。此时stage = 
   RESOURCE_CACHE，currentGenerator = DataCacheGenerator。再次循环后，stage = SOURCE，currentGenerator = SourceGenerator。
@@ -228,7 +239,6 @@ ResourceCacheGenerator的实例，来执行到它的startNext()方法。因为�
 * hasNextModelLoader()主要看helper.getLoadData()
 * 其他2个判断loadData.fetcher.getDataSource()与loadData.fetcher.getDataClass()
 
-  
 8、SourceGenerator#startNext()##helper.getLoadData()  
 > 这个getLoadData还是有必要单独抽出来提下，<https://blog.csdn.net/FooTyzZ/article/details/89642968>这部分也有提到。差距不是很大。从
 >  getLoadData()#glideContext.getRegistry().getModelLoaders(model)处开始
@@ -430,7 +440,7 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
 
 17、*DecodeJob#notifyEncodeAndRelease()*
 * 执行notifyComplete()，完成请求，准备设置图片环节。
-* stage赋值Stage.ENCODE，执行DeferredEncodeManager#encode(..)将转换过的数据添加到磁盘缓存中(DiskLruCache)
+* stage赋值Stage.ENCODE，执行DeferredEncodeManager#encode(..)将转换过的数据添加到磁盘缓存中(DiskLruCache)，这里是缓存处理后的文件资源；
 * 执行onEncodeComplete()，状态初始化。如stage，model，currentGenerator等等
 > notifyComplete()方法就是通过callback回到EngineJob#onResourceReady()方法。
 
@@ -438,6 +448,7 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
 > 在这里初始化一些常量后调用`notifyCallbacksOfResult()`方法。在这个方法里，1、首先校验取消状态，如果取消了就将资源回收；2、重新将图片resource包装
 > 成一个EngineResource，通过`engineJobListener.onEngineJobComplete()`回调到`Engine`，将EngineResource添加到ActiveResources保存(内存缓存)
 > 最后通过遍历`cbs`的回调，返回到SingleRequest#onResourceReady()准备为View设置图片。(`cbs`怎么来的可以看*第5、*)
+
 
 ##### 3、设置图片阶段
 1、*SingleRequest#onResourceReady(...) 回调接口方法，3个参数*
@@ -459,11 +470,12 @@ public <A> List<ModelLoader<A, ?>> getModelLoaders(@NonNull A model) {
   }
 ```
 > `view`就是Glide.into(view)的那个view。到此，glide加载图片的流程已经全部走完。
- 
+
 
 #### 缓存原理
-> glide从缓存中获取图片有2种形式，内存缓存与磁盘缓存。
+glide从缓存中获取图片有2种形式，内存缓存与磁盘缓存。
 
+##### 源码分析
 内存缓存又分2种：ActiveResources与LruResourceCache。
 
 > 从内存缓存获取图片在整个加载流程中可追溯到`Engine#load()`方法。这里正是`into()`之后的流程。
@@ -564,8 +576,7 @@ loadFromMemory()分别从2个方法分别获取图片缓存，分别是loadFromA
 > 提供Editor与Value的好处就是方便灵活，能够做到统一处理。无论保存的资源是bitmap是drawable还是其他，存储在磁盘后都成了文件。再统一包装成Entry，Entry
 > 包含了在内存中的文件缓存引用，在磁盘中的缓存路径，文件大小等等属性。
 
-
-总结：
+##### 总结
 > 以一个新图片资源请求为例，它的存取流程为：首先从内存缓存中的弱引用缓存集ActiveResources中读取，然后尝试到LruResourceCache中获取。如果无法读取到目
 > 标资源将会从磁盘缓存中读取；先尝试从转换过的磁盘缓存中读取，然后尝试从原始资源(未转换过)缓存中读取。如果都无法获取，将请求服务器，从服务器获取图片。请求
 > 图片下来后先把原始图片资源(未解码、未转换)缓存到磁盘(如果允许做磁盘缓存)，然后对图片进行转换，解码，再缓存转换过的图片资源到磁盘。在设置，显示图片之前，
@@ -574,21 +585,8 @@ loadFromMemory()分别从2个方法分别获取图片缓存，分别是loadFromA
 > 行release()方法。内部的计数器自减，当计数器等于0时，通过回调保存到LruCache中，完成从弱引用缓存到LruCache的转移。
 
 
-#### 其他问题
-
-为什么glide内存缓存要设计2层?
-> 用弱引用缓存的资源都是当前活跃资源ActiveResource，保护这部分资源不会被LruCache算法回收，同时使用频率高的资源将不会在LruCache中查找，相当于
-> 替LruCache减压。
-
-glide如何与activity、fragment绑定生命周期?
-> glide绑定页面的生命周期是由RequestManager实现的。在执行`Glide.with()`时会调用到RequestManagerRetriever.get(...)方法，参数可以是activity
-> 或fragment,或者其他Context。在get()的过程中会创建一个Fragment(RequestManagerFragment)，这个fragment持有一个
-> Lifecycle(ActivityFragmentLifecycle)，这个lifecycle绑定了fragment的生命周期，在构建RequestManager时会将这个fragment的lifecycle传入，
-> 届时通过addListener()将RequestManager与lifecycle关联。达到RequestManager绑定内部fragment生命周期的效果。
-
-DiskLruCache中LinkedHashMap如何恢复?
->初始化DiskLruCache时会借助journal日志文件，重新将缓存添加到这个LinkedHashMap中，完成对LinkedHashMap的初始化。
-
-DiskLruCache的journal日志文件机制?
-> 主要用于恢复LinkedHashMap的缓存对象。journal文件保存的是操作记录，比如put操作会生成一条“DIRTY”与一条“CLEAN”记录；get操作会生
-> 成一条“READ”记录；remove操作生成一条“REMOVE”记录。初始化DiskLruCache时读取journal文件将缓存添加到LinkedHashMap。
+#### 缓存策略
+> ALL：缓存原始图片和转换后图片;
+> NONE：不缓存
+> SOURCE：只缓存原始图片
+> RESULT：只缓存转换后图片
